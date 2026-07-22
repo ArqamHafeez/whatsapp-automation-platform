@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
+
+model User {
+  id             String        @id @default(uuid())
+  email          String        @unique
+  name           String?
+  passwordHash   String
+  isAdmin        Boolean       @default(false)
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  sessions       Session[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+enum ChatType {
+  CHAT
+  GROUP
+  CHANNEL
+}
+
+enum ReviewMode {
+  off
+  on_escalation
+  always
+}
+
+enum AgentType {
+  RELEVANCE
+  CLEANING
+  ROUTING
+  WATERMARK
+}
+
+enum DecisionType {
+  forward
+  hold_for_review
+  drop
+  forward_on_pipeline_error
+}
+
+enum SendStatus {
+  pending
+  sent
+  failed
+  forwarded_on_pipeline_error
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+  auto_forwarded
+}
+
+model WhatsAppConnection {
+  id           String      @id @default(uuid())
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id])
+  externalId   String?
+  name         String
+  status       String
+  qrCodeUrl    String?
+  lastSeenAt   DateTime?
+  metadata     Json?
+  chats        Chat[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([orgId, externalId])
+}
+
+model Chat {
+  id             String              @id @default(uuid())
+  connectionId   String
+  connection     WhatsAppConnection  @relation(fields: [connectionId], references: [id])
+  externalChatId String
+  type           ChatType
+  title          String?
+  description    String?
+  isSource       Boolean             @default(false)
+  isDestination  Boolean             @default(false)
+  metadata       Json?
+  ruleSources    RuleSource[]
+  ruleDestinations RuleDestination[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([connectionId, externalChatId])
+}
+
+model Rule {
+  id                  String             @id @default(uuid())
+  orgId               String
+  org                 Organization       @relation(fields: [orgId], references: [id])
+  name                String
+  description         String?
+  reviewMode          ReviewMode         @default(on_escalation)
+  reviewTimeoutMinutes Int               @default(1440)
+  isActive            Boolean            @default(true)
+  sources             RuleSource[]
+  destinations        RuleDestination[]
+  pipelineSteps       RulePipelineStep[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+}
+
+model RuleSource {
+  id      String @id @default(uuid())
+  ruleId  String
+  chatId  String
+  rule    Rule   @relation(fields: [ruleId], references: [id])
+  chat    Chat   @relation(fields: [chatId], references: [id])
+}
+
+model RuleDestination {
+  id      String @id @default(uuid())
+  ruleId  String
+  chatId  String
+  rule    Rule   @relation(fields: [ruleId], references: [id])
+  chat    Chat   @relation(fields: [chatId], references: [id])
+}
+
+model RulePipelineStep {
+  id        String    @id @default(uuid())
+  ruleId    String
+  position  Int
+  agentType AgentType
+  agentId   String?
+  rule      Rule      @relation(fields: [ruleId], references: [id])
+}
+
+model Agent {
+  id           String         @id @default(uuid())
+  orgId        String
+  org          Organization   @relation(fields: [orgId], references: [id])
+  type         AgentType
+  name         String
+  description  String?
+  template     String
+  defaultModel String
+  isEnabled    Boolean        @default(true)
+  examples     AgentExample[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model AgentExample {
+  id        String   @id @default(uuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id])
+  input     String
+  output    String
+}
+
+model PipelineDecision {
+  id           String       @id @default(uuid())
+  messageId    String
+  ruleId       String
+  decisionType DecisionType
+  destinations String[]
+  reviewReason String?
+  status       String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model SendLog {
+  id                String     @id @default(uuid())
+  messageId         String
+  sourceMessageId   String
+  destinationChatId String
+  ruleId            String?
+  status            SendStatus @default(pending)
+  attempts          Int        @default(0)
+  lastAttemptAt     DateTime?
+  nextAttemptAt     DateTime?
+  errorDetails      String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model ReviewItem {
+  id              String        @id @default(uuid())
+  messageId       String
+  ruleId          String
+  status          ReviewStatus  @default(pending)
+  createdAt       DateTime      @default(now())
+  expiresAt       DateTime
+  originalPayload String
+  reviewNotes     String?
+  reviewerId      String?
+  updatedAt       DateTime      @updatedAt
+}
+
+model OutboundJob {
+  id         String    @id @default(uuid())
+  sendLogId  String
+  sendLog    SendLog   @relation(fields: [sendLogId], references: [id])
+  scheduledAt DateTime
+  status     String
+  createdAt  DateTime  @default(now())
+}
