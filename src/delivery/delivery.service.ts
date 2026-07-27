@@ -59,7 +59,7 @@ export class DeliveryService {
     return { queued: true, sendLogId: sendLog.id };
   }
 
-  private async processDelivery(sendLogId: string, job: DeliveryJob) {
+    private async processDelivery(sendLogId: string, job: DeliveryJob) {
     try {
       await this.enforceRateLimit(job.connectionId);
       await this.sleep(Math.floor(Math.random() * this.JITTER_MS));
@@ -72,7 +72,43 @@ export class DeliveryService {
         throw new Error(`Connection not ready: ${connection?.status || 'missing'}`);
       }
 
+      const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://localhost:8081';
+      const apiKey = process.env.EVOLUTION_API_KEY || '';
+
+      // Evolution expects just the number (or full JID). Clean it.
+      let number = job.destinationChatId;
+      // Keep @g.us for groups, strip @s.whatsapp.net for individuals if needed
+      // Most Evolution versions accept full JID or plain number.
+
+      const payload: any = {
+        number: number,
+        text: job.body || '',
+      };
+
+      // If it's an image/document in the future you can extend here
+      // For now Phase-1 text only
+
       console.log(`[FORWARD] ${job.messageId} → ${job.destinationChatId}: ${job.body?.substring(0, 50)}`);
+
+      const res = await fetch(
+        `${evolutionUrl}/message/sendText/${connection.name}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': apiKey,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Evolution send failed (${res.status}): ${errorText}`);
+      }
+
+      const result = await res.json();
+      console.log(`[FORWARD SUCCESS]`, JSON.stringify(result).substring(0, 200));
 
       await this.prisma.sendLog.update({
         where: { id: sendLogId },
@@ -81,6 +117,7 @@ export class DeliveryService {
 
       return { success: true };
     } catch (err: any) {
+      console.error(`[FORWARD FAILED]`, err.message);
       await this.prisma.sendLog.update({
         where: { id: sendLogId },
         data: { status: 'failed', errorDetails: err.message },
