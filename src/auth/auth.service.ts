@@ -11,31 +11,36 @@ export class AuthService {
   ) {}
 
   async register(email: string, password: string, name: string, organizationSlug: string) {
-    const existingUser = await this.prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      throw new ConflictException('User already exists');
-    }
+    try {
+      const existingUser = await this.prisma.user.findUnique({ where: { email } });
+      if (existingUser) {
+        throw new ConflictException('User already exists');
+      }
 
-    let organization = await this.prisma.organization.findUnique({ where: { slug: organizationSlug } });
-    if (!organization) {
-      organization = await this.prisma.organization.create({
-        data: { name: organizationSlug, slug: organizationSlug },
+      let organization = await this.prisma.organization.findUnique({ where: { slug: organizationSlug } });
+      if (!organization) {
+        organization = await this.prisma.organization.create({
+          data: { name: organizationSlug, slug: organizationSlug },
+        });
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+      const user = await this.prisma.user.create({
+        data: {
+          email,
+          name,
+          passwordHash,
+          organizationId: organization.id,
+          isAdmin: true,
+        },
       });
+
+      const token = await this.createSession(user.id);
+      return { user: this.sanitizeUser(user), token };
+    } catch (error) {
+      console.error('Register error:', error);
+      throw error;
     }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        name,
-        passwordHash,
-        organizationId: organization.id,
-        isAdmin: true,
-      },
-    });
-
-    const token = await this.createSession(user.id);
-    return { user: this.sanitizeUser(user), token };
   }
 
   async login(email: string, password: string) {

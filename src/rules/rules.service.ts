@@ -6,22 +6,60 @@ export class RulesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async listRules() {
-    return { message: 'Rule list not implemented yet' };
+    return this.prisma.rule.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async createRule(data: any) {
-    return { message: 'Create rule not implemented yet', data };
+    const { orgId, name, description, sourceChatIds, destinationChatIds } = data;
+    
+    return this.prisma.rule.create({
+      data: {
+        orgId,
+        name,
+        description: description || null,
+        isActive: true,
+        sourceChatIds: sourceChatIds || [],
+        destinationChatIds: destinationChatIds || [],
+      },
+    });
   }
 
   async getRule(id: string) {
-    return { message: 'Get rule not implemented yet', id };
+    return this.prisma.rule.findUnique({
+      where: { id },
+    });
   }
 
   async updateRule(id: string, data: any) {
-    return { message: 'Update rule not implemented yet', id, data };
+    const { name, description, isActive, sourceChatIds, destinationChatIds } = data;
+    return this.prisma.rule.update({
+      where: { id },
+      data: { 
+        name, 
+        description, 
+        isActive,
+        sourceChatIds,
+        destinationChatIds,
+      },
+    });
   }
 
   async deleteRule(id: string) {
-    return { message: 'Delete rule not implemented yet', id };
+    await this.prisma.rule.delete({ where: { id } });
+    return { deleted: true, id };
+  }
+
+  async findMatchingRules(chatId: string, orgId: string) {
+    return this.prisma.rule.findMany({
+      where: {
+        orgId,
+        isActive: true,
+        sourceChatIds: {
+          has: chatId,
+        },
+      },
+    });
   }
 }

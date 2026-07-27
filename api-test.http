@@ -1,0 +1,49 @@
+### ─── AUTH ───
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@demo.com",
+  "password": "admin123"
+}
+
+### ─── RULES ───
+### List Rules
+GET http://localhost:3000/rules
+
+### Create Rule
+POST http://localhost:3000/rules
+Content-Type: application/json
+
+{
+  "orgId": "e6f12d9c-a007-4461-98c1-2c9684dde314",
+  "name": "Forward Jobs",
+  "description": "Forward job postings",
+  "sourceChatIds": ["source-group-1@g.us"],
+  "destinationChatIds": ["dest-group-1@g.us"]
+}
+
+### ─── WEBHOOK (Simulate Incoming Message) ───
+POST http://localhost:3000/webhook/evolution
+Content-Type: application/json
+
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "main-instance",
+  "data": {
+    "key": {
+      "id": "3EB0C6D5B2A1F4E8",
+      "remoteJid": "source-group-1@g.us",
+      "fromMe": false
+    },
+    "pushName": "Test Sender",
+    "message": {
+      "conversation": "Hello! This is a test message for forwarding."
+    },
+    "messageTimestamp": 1721980800
+  }
+}
+
+### ─── CONNECTIONS ───
+GET http://localhost:3000/connections
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyZjZjOGEyNC0wNWE1LTQwODAtOWZmNS0wMTJkOTk1NmQxNzMiLCJpYXQiOjE3ODUwNjQ4NjcsImV4cCI6MTc4NTE1MTI2N30.wrswXcn8zje6vlV0WSjcHlVAOCtxSgLSRzi9Yia3ebg

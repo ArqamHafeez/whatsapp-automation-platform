@@ -7,5 +7,6 @@ import { RulesService } from './rules.service';
   imports: [PrismaModule],
   controllers: [RulesController],
   providers: [RulesService],
+  exports: [RulesService],  // <-- ADD THIS
 })
 export class RulesModule {}

@@ -10,6 +10,7 @@ import { PipelineModule } from './pipeline/pipeline.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { WebhookController } from './webhook/webhook.controller';
 
 @Module({
   imports: [
@@ -25,5 +26,6 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     ReviewsModule,
     MonitoringModule,
   ],
+  controllers: [WebhookController],
 })
 export class AppModule {}
