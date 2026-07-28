@@ -54,6 +54,34 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private prisma: PrismaService) {}
 
+  private async getUserOrgId(userId: string): Promise<string> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user.organizationId;
+  }
+
+  /**
+   * Confirms a SendLog belongs (transitively, via its rule) to the caller's org.
+   * SendLog has no orgId column of its own and `ruleId` is a plain String? in
+   * schema.prisma rather than a declared Prisma relation, so this can't be done
+   * as a single relational query (`where: { rule: { orgId } }`) — it's resolved
+   * with an explicit Rule lookup instead. If ruleId is missing (schema allows
+   * it, though the normal webhook → enqueueDelivery path always sets it), there's
+   * no way to verify ownership, so this fails closed rather than risk leaking or
+   * mutating another org's send log.
+   */
+  private async assertSendLogInOrg(ruleId: string | null, orgId: string): Promise<void> {
+    if (!ruleId) {
+      throw new NotFoundException('Send log not found');
+    }
+    const rule = await this.prisma.rule.findFirst({ where: { id: ruleId, orgId } });
+    if (!rule) {
+      throw new NotFoundException('Send log not found');
+    }
+  }
+
   onModuleInit() {
     this.pollTimer = setInterval(() => {
       this.pollDueRetries().catch((err) => {
@@ -333,11 +361,14 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
    * schedule, and without re-running the (not-yet-built) AI pipeline — it
    * replays the original message body/media straight to the same destination.
    */
-  async retry(sendLogId: string) {
+  async retry(userId: string, sendLogId: string) {
+    const orgId = await this.getUserOrgId(userId);
+
     const sendLog = await this.prisma.sendLog.findUnique({ where: { id: sendLogId } });
     if (!sendLog) {
       throw new NotFoundException('Send log not found');
     }
+    await this.assertSendLogInOrg(sendLog.ruleId, orgId);
 
     const message = await this.prisma.message.findUnique({ where: { id: sendLog.messageId } });
     if (!message) {
@@ -363,8 +394,24 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     return { retried: true, sendLogId: sendLog.id, ...result };
   }
 
-  async getLogs() {
+  async getLogs(userId: string) {
+    const orgId = await this.getUserOrgId(userId);
+
+    // Same relation gap as assertSendLogInOrg: ruleId isn't a declared Prisma
+    // relation on SendLog, so org-scoping is a two-step lookup (rule ids for this
+    // org, then send logs referencing those ids) rather than a single relational
+    // `where: { rule: { orgId } }` filter.
+    const orgRules = await this.prisma.rule.findMany({
+      where: { orgId },
+      select: { id: true },
+    });
+    const ruleIds = orgRules.map((r) => r.id);
+    if (ruleIds.length === 0) {
+      return [];
+    }
+
     return this.prisma.sendLog.findMany({
+      where: { ruleId: { in: ruleIds } },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
