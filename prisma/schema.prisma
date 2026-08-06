@@ -16,6 +16,7 @@ model Organization {
   users               User[]
   whatsappConnections WhatsAppConnection[]
   rules               Rule[]
+  agents              Agent[]
 }
 
 model User {
@@ -57,6 +58,7 @@ model WhatsAppConnection {
   lastSeenAt  DateTime?
   metadata    Json?
   chats       Chat[]
+  rules       Rule[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -85,6 +87,8 @@ model Rule {
   id                  String   @id @default(uuid())
   orgId               String
   org                 Organization @relation(fields: [orgId], references: [id])
+  connectionId        String
+  connection          WhatsAppConnection @relation(fields: [connectionId], references: [id])
   name                String
   description         String?
   reviewMode          String   @default("on_escalation")
@@ -92,8 +96,41 @@ model Rule {
   isActive            Boolean  @default(true)
   sourceChatIds       String[]
   destinationChatIds  String[]
+  pipelineAgentIds    String[] @default([])
+  pipelineFailOpen    Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+  sendLogs            SendLog[]
+  pipelineDecisions   PipelineDecision[]
+
+  @@index([connectionId])
+}
+
+enum AgentType {
+  relevance
+  clean
+  route
+  custom
+}
+
+model Agent {
+  id                     String       @id @default(uuid())
+  orgId                  String
+  org                    Organization @relation(fields: [orgId], references: [id])
+  name                   String
+  description            String?
+  type                   AgentType
+  systemPrompt           String?
+  userPromptTemplate     String?
+  model                  String?
+  structuredConfig       Json?
+  advancedPromptOverride String?
+  isActive               Boolean      @default(true)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  @@index([orgId])
+  @@index([orgId, type])
 }
 
 enum MessageType {
@@ -139,6 +176,7 @@ model SendLog {
   sourceMessageId   String
   destinationChatId String
   ruleId            String?
+  rule              Rule?      @relation(fields: [ruleId], references: [id])
   status            SendStatus @default(pending)
   attempts          Int        @default(0)
   lastAttemptAt     DateTime?
@@ -153,15 +191,25 @@ model SendLog {
 }
 
 model PipelineDecision {
-  id           String       @id @default(uuid())
+  id           String   @id @default(uuid())
   messageId    String
   ruleId       String
+  rule         Rule     @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   decisionType String
   destinations String[]
+  body         String?
+  mediaUrl     String?
   reviewReason String?
   status       String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  pipelineMode String?
+  stepLogs     Json?
+  errorDetails String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([messageId])
+  @@index([ruleId])
+  @@index([messageId, ruleId])
 }
 
 model ReviewItem {

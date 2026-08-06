@@ -7,5 +7,6 @@ import { AgentsService } from './agents.service';
   imports: [PrismaModule],
   controllers: [AgentsController],
   providers: [AgentsService],
+  exports: [AgentsService],
 })
 export class AgentsModule {}

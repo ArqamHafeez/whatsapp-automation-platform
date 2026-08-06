@@ -1,55 +1,93 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
-
-type SendLogRecord = {
-  status: string;
-  createdAt?: Date | null;
-  errorDetails?: string | null;
-};
-
-type ReviewItemRecord = {
-  status: string;
-};
 
 @Injectable()
 export class MonitoringService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getThroughput(window = '1h') {
-    const since = this.getWindowStart(window);
-    const prismaAny = this.prisma as unknown as {
-      sendLog?: { findMany: (args?: unknown) => Promise<SendLogRecord[]> };
-    };
+  private async getUserOrgId(userId: string): Promise<string> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user.organizationId;
+  }
 
-    const logs = await prismaAny.sendLog?.findMany({
-      where: since ? { createdAt: { gte: since } } : undefined,
-      select: { status: true, createdAt: true, errorDetails: true },
+  private async connectionIdsForOrg(orgId: string): Promise<string[]> {
+    const connections = await this.prisma.whatsAppConnection.findMany({
+      where: { orgId },
+      select: { id: true },
+    });
+    return connections.map((c) => c.id);
+  }
+
+  async getThroughput(userId: string, window = '1h') {
+    const orgId = await this.getUserOrgId(userId);
+    const since = this.getWindowStart(window);
+    const connectionIds = await this.connectionIdsForOrg(orgId);
+
+    const logs = await this.prisma.sendLog.findMany({
+      where: {
+        OR: [
+          { rule: { orgId } },
+          ...(connectionIds.length ? [{ message: { connectionId: { in: connectionIds } } }] : []),
+        ],
+        ...(since ? { createdAt: { gte: since } } : {}),
+      },
+      select: { status: true },
     });
 
-    const records = logs ?? [];
-    const total = records.length;
-    const sent = records.filter((log: SendLogRecord) => log.status === 'sent').length;
-    const failed = records.filter((log: SendLogRecord) => log.status === 'failed').length;
+    const total = logs.length;
+    const sent = logs.filter((log) => log.status === 'sent').length;
+    const failed = logs.filter((log) => log.status === 'failed').length;
+    const pending = logs.filter((log) => log.status === 'pending').length;
+    const forwardedOnPipelineError = logs.filter(
+      (log) => log.status === 'forwarded_on_pipeline_error',
+    ).length;
     const successRate = total > 0 ? Number(((sent / total) * 100).toFixed(2)) : 0;
+
+    const orgRules = await this.prisma.rule.findMany({
+      where: { orgId },
+      select: { id: true },
+    });
+    const ruleIds = orgRules.map((rule) => rule.id);
+    const dropped =
+      ruleIds.length > 0
+        ? await this.prisma.pipelineDecision.count({
+            where: {
+              ruleId: { in: ruleIds },
+              decisionType: 'skip',
+              ...(since ? { createdAt: { gte: since } } : {}),
+            },
+          })
+        : 0;
 
     return {
       window,
       total,
       sent,
       failed,
+      pending,
+      dropped,
+      forwardedOnPipelineError,
       successRate,
     };
   }
 
-  async getFailureSummary() {
-    const prismaAny = this.prisma as unknown as {
-      sendLog?: { findMany: (args?: unknown) => Promise<SendLogRecord[]> };
-    };
+  async getFailureSummary(userId: string) {
+    const orgId = await this.getUserOrgId(userId);
+    const connectionIds = await this.connectionIdsForOrg(orgId);
 
-    const logs = (await prismaAny.sendLog?.findMany({
-      where: { status: 'failed' },
+    const logs = await this.prisma.sendLog.findMany({
+      where: {
+        status: 'failed',
+        OR: [
+          { rule: { orgId } },
+          ...(connectionIds.length ? [{ message: { connectionId: { in: connectionIds } } }] : []),
+        ],
+      },
       select: { errorDetails: true },
-    })) ?? [];
+    });
 
     const byReason = logs.reduce<Record<string, number>>((acc, log) => {
       const reason = log.errorDetails?.trim() || 'Unknown error';
@@ -63,14 +101,24 @@ export class MonitoringService {
     };
   }
 
-  async getReviewSummary() {
-    const prismaAny = this.prisma as unknown as {
-      reviewItem?: { findMany: (args?: unknown) => Promise<ReviewItemRecord[]> };
-    };
+  async getReviewSummary(userId: string) {
+    const orgId = await this.getUserOrgId(userId);
+    const ruleIds = (
+      await this.prisma.rule.findMany({
+        where: { orgId },
+        select: { id: true },
+      })
+    ).map((rule) => rule.id);
 
-    const reviewItems = (await prismaAny.reviewItem?.findMany({
-      select: { status: true },
-    })) ?? [];
+    if (!ruleIds.length) {
+      return { total: 0, pending: 0, approved: 0, rejected: 0, oldestPendingAgeMinutes: null };
+    }
+
+    const reviewItems = await this.prisma.reviewItem.findMany({
+      where: { ruleId: { in: ruleIds } },
+      select: { status: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
 
     const summary = reviewItems.reduce(
       (acc, item) => {
@@ -83,7 +131,36 @@ export class MonitoringService {
       { total: 0, pending: 0, approved: 0, rejected: 0 },
     );
 
-    return summary;
+    const oldestPending = reviewItems.find((item) => item.status === 'pending');
+    const oldestPendingAgeMinutes = oldestPending
+      ? Math.floor((Date.now() - oldestPending.createdAt.getTime()) / 60_000)
+      : null;
+
+    return { ...summary, oldestPendingAgeMinutes };
+  }
+
+  async getConnectionHealth(userId: string) {
+    const orgId = await this.getUserOrgId(userId);
+
+    const connections = await this.prisma.whatsAppConnection.findMany({
+      where: { orgId },
+      select: { id: true, name: true, status: true, lastSeenAt: true },
+    });
+
+    const connectionIds = await this.connectionIdsForOrg(orgId);
+
+    const failedSendCount = await this.prisma.sendLog.count({
+      where: {
+        status: 'failed',
+        nextAttemptAt: null,
+        OR: [
+          { rule: { orgId } },
+          ...(connectionIds.length ? [{ message: { connectionId: { in: connectionIds } } }] : []),
+        ],
+      },
+    });
+
+    return { connections, failedSendCount };
   }
 
   private getWindowStart(window: string): Date | null {

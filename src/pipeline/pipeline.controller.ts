@@ -1,17 +1,14 @@
-import { Controller, Post, Get, Body, Param } from '@nestjs/common';
+import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
 import { PipelineService } from './pipeline.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('pipeline')
+@UseGuards(JwtAuthGuard)
 export class PipelineController {
   constructor(private readonly pipelineService: PipelineService) {}
 
-  @Post('process')
-  async processMessage(@Body() body: any) {
-    return this.pipelineService.processMessage(body);
-  }
-
   @Get('decisions/:messageId')
-  async getDecision(@Param('messageId') messageId: string) {
-    return this.pipelineService.getDecision(messageId);
+  async getDecisions(@Param('messageId') messageId: string, @Req() req: any) {
+    return this.pipelineService.getDecisionsForMessage(req.user.userId, messageId);
   }
 }

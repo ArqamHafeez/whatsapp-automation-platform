@@ -1,99 +1,51 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { RulesService } from '../rules/rules.service';
-import { DeliveryService } from '../delivery/delivery.service';
+import { Controller, Post, Body, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { InboundMessageService } from '../ingestion/inbound-message.service';
 
 @Controller('webhook')
 export class WebhookController {
-  constructor(
-    private prisma: PrismaService,
-    private rules: RulesService,
-    private delivery: DeliveryService,
-  ) {}
+  private readonly logger = new Logger(WebhookController.name);
 
-  @Post('evolution')
+  constructor(private readonly inbound: InboundMessageService) {}
+
+  @Post('waha')
   @HttpCode(HttpStatus.OK)
-  async handleWebhook(@Body() payload: any) {
-    if (payload.data?.key?.fromMe) {
-      return { received: true, action: 'ignored_from_me' };
+  async handleWahaWebhook(@Body() payload: any) {
+    const sessionName = payload?.session ?? 'unknown';
+    const eventName = String(payload?.event ?? '').toLowerCase();
+    this.logger.log(`WAHA webhook received session=${sessionName} event=${payload?.event ?? 'n/a'}`);
+
+    const isInboundMessageEvent =
+      !eventName || eventName === 'message' || eventName === 'message.any';
+    if (!isInboundMessageEvent) {
+      return { received: true, action: 'ignored_event', event: payload?.event };
     }
 
-    const instanceName = payload.instance;
-    const instance = await this.prisma.whatsAppConnection.findFirst({
-      where: { name: instanceName },
-    });
+    const result = await this.inbound.processWahaPayload(payload as Record<string, unknown>);
 
-    if (!instance) {
-      return { received: false, reason: 'instance_not_found' };
-    }
-
-    const msgData = payload.data;
-    const waMessageId = msgData.key.id;
-    const chatId = msgData.key.remoteJid;
-    const sender = msgData.pushName || msgData.key.remoteJid;
-
-    let body = '';
-    let type: any = 'text';
-    let mediaUrl: string | null = null;
-
-    if (msgData.message?.conversation) {
-      body = msgData.message.conversation;
-    } else if (msgData.message?.imageMessage) {
-      body = msgData.message.imageMessage.caption || '';
-      type = 'image';
-      mediaUrl = msgData.message.imageMessage.url || null;
-    } else if (msgData.message?.documentMessage) {
-      body = msgData.message.documentMessage.caption || '';
-      type = 'document';
-      mediaUrl = msgData.message.documentMessage.url || null;
-    } else if (msgData.message?.videoMessage) {
-      body = msgData.message.videoMessage.caption || '';
-      type = 'video';
-      mediaUrl = msgData.message.videoMessage.url || null;
-    }
-
-    const existing = await this.prisma.message.findUnique({
-      where: { waMessageId_connectionId: { waMessageId, connectionId: instance.id } },
-    });
-
-    if (existing) {
-      return { received: true, action: 'duplicate_ignored', messageId: existing.id };
-    }
-
-    const message = await this.prisma.message.create({
-      data: {
-        waMessageId,
-        connectionId: instance.id,
-        chatId,
-        sender,
-        body,
-        type,
-        mediaUrl,
-        metadata: payload,
-      },
-    });
-
-    const rules = await this.rules.findMatchingRules(chatId, instance.orgId);
-    
-    for (const rule of rules) {
-      for (const destChatId of rule.destinationChatIds) {
-        await this.delivery.enqueueDelivery({
-          messageId: message.id,
-          destinationChatId: destChatId,
-          ruleId: rule.id,
-          connectionId: instance.id,
-          body: message.body,
-          type: message.type,
-          mediaUrl: message.mediaUrl,
-        });
+    if (result.action === 'ignored') {
+      if (result.reason === 'from_me') {
+        this.logger.log(`Ignored fromMe message session=${sessionName}`);
       }
+      return { received: true, action: result.reason === 'from_me' ? 'ignored_from_me' : result.reason };
     }
 
-    return { 
-      received: true, 
-      messageId: message.id,
-      rulesMatched: rules.length,
-      destinations: rules.reduce((sum, r) => sum + r.destinationChatIds.length, 0),
+    if (result.action === 'duplicate_ignored') {
+      return { received: true, action: 'duplicate_ignored', messageId: result.messageId };
+    }
+
+    this.logger.log(
+      `Message stored id=${result.messageId} type=${result.messageType} rulesMatched=${result.rulesMatched}`,
+    );
+
+    return {
+      received: true,
+      messageId: result.messageId,
+      messageType: result.messageType,
+      hasMedia: result.hasMedia,
+      rulesMatched: result.rulesMatched,
+      pipelineRuns: result.pipelineRuns,
+      reviewsQueued: result.reviewsQueued,
+      destinations: result.destinations,
     };
   }
 }
