@@ -19,11 +19,17 @@ model Organization {
   agents              Agent[]
 }
 
+enum UserRole {
+  admin
+  reviewer
+}
+
 model User {
   id             String        @id @default(uuid())
   email          String        @unique
   name           String?
   passwordHash   String
+  role           UserRole      @default(reviewer)
   isAdmin        Boolean       @default(false)
   organizationId String
   organization   Organization  @relation(fields: [organizationId], references: [id])
@@ -74,6 +80,8 @@ model Chat {
   type           ChatType
   title          String?
   description    String?
+  maxSendsPerHour Int?
+  maxSendsPerDay  Int?
   isSource       Boolean             @default(false)
   isDestination  Boolean             @default(false)
   metadata       Json?
@@ -110,6 +118,7 @@ enum AgentType {
   relevance
   clean
   route
+  image_edit
   custom
 }
 
@@ -188,6 +197,7 @@ model SendLog {
 
   @@unique([messageId, destinationChatId])
   @@index([status, nextAttemptAt])
+  @@index([destinationChatId, status, sentAt])
 }
 
 model PipelineDecision {

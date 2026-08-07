@@ -1,11 +1,15 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { RulesService } from './rules.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { CreateRuleDto, UpdateRuleDto } from './rules.dto';
 import { SimulateRuleDto } from './rules.simulate.dto';
 
 @Controller('rules')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.admin)
 export class RulesController {
   constructor(private readonly rulesService: RulesService) {}
 

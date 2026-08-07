@@ -1,4 +1,4 @@
-export type AgentType = 'relevance' | 'clean' | 'route';
+export type AgentType = 'relevance' | 'clean' | 'route' | 'image_edit';
 
 export type RelevanceStructuredConfig = {
   inclusionCriteria: string;
@@ -26,10 +26,19 @@ export type RouteStructuredConfig = {
   fallbackBehavior: string;
 };
 
+export type ImageEditStructuredConfig = {
+  removePrompt: string;
+  onlyWhenWatermarkDetected: string;
+  reviewOnFailure: string;
+  reviewAfterEdit: string;
+  minConfidence: string;
+};
+
 export type StructuredConfigByType = {
   relevance: RelevanceStructuredConfig;
   clean: CleanStructuredConfig;
   route: RouteStructuredConfig;
+  image_edit: ImageEditStructuredConfig;
 };
 
 export const emptyRelevanceStructuredConfig = (): RelevanceStructuredConfig => ({
@@ -58,9 +67,18 @@ export const emptyRouteStructuredConfig = (): RouteStructuredConfig => ({
   fallbackBehavior: '',
 });
 
+export const emptyImageEditStructuredConfig = (): ImageEditStructuredConfig => ({
+  removePrompt: '',
+  onlyWhenWatermarkDetected: '',
+  reviewOnFailure: 'true',
+  reviewAfterEdit: '',
+  minConfidence: '0.6',
+});
+
 export function emptyStructuredConfigForType(type: AgentType) {
   if (type === 'clean') return emptyCleanStructuredConfig();
   if (type === 'route') return emptyRouteStructuredConfig();
+  if (type === 'image_edit') return emptyImageEditStructuredConfig();
   return emptyRelevanceStructuredConfig();
 }
 
@@ -164,10 +182,43 @@ export const STRUCTURED_FIELDS: Record<AgentType, StructuredFieldDef[]> = {
       placeholder: 'e.g. skip, pick default group, or flag for review',
     },
   ],
+  image_edit: [
+    {
+      key: 'removePrompt',
+      label: 'Removal goal',
+      rows: 2,
+      placeholder: 'e.g. Remove corner channel logo and "forwarded from" stamp',
+    },
+    {
+      key: 'onlyWhenWatermarkDetected',
+      label: 'Only when relevance detected watermark (true/false)',
+      rows: 1,
+      placeholder: 'true — skip image edit unless relevance flagged watermark',
+    },
+    {
+      key: 'minConfidence',
+      label: 'Minimum locate confidence (0-1)',
+      rows: 1,
+      placeholder: '0.6',
+    },
+    {
+      key: 'reviewOnFailure',
+      label: 'Send to review if edit fails (true/false)',
+      rows: 1,
+      placeholder: 'true',
+    },
+    {
+      key: 'reviewAfterEdit',
+      label: 'Always review after edit (true/false)',
+      rows: 1,
+      placeholder: 'false — auto-forward cleaned image',
+    },
+  ],
 };
 
 export const STRUCTURED_POLICY_INTRO: Record<AgentType, string> = {
   relevance: 'Define what should be forwarded, skipped, or sent to review for this rule.',
   clean: 'Define how message text should be transformed before forwarding.',
   route: 'Define how to choose destination chats (use chat descriptions on the Chats page too).',
+  image_edit: 'Configure pixel watermark removal for image messages (local sharp blur by default).',
 };

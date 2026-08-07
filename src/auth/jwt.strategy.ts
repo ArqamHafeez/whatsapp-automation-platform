@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { AuthUser } from './auth-user.types';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -17,7 +18,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  async validate(req: any, payload: any) {
+  async validate(req: { headers?: { authorization?: string }; query?: { access_token?: string } }, payload: { sub?: string }): Promise<AuthUser> {
     const authHeader = req.headers?.authorization;
     let token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
     if (!token && typeof req.query?.access_token === 'string') {
@@ -37,6 +38,15 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Session expired');
     }
 
-    return { userId: payload.sub };
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return {
+      userId: user.id,
+      role: user.role,
+      organizationId: user.organizationId,
+    };
   }
 }

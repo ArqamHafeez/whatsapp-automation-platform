@@ -1,25 +1,27 @@
 import { AgentType } from '@prisma/client';
 
-/** v1 fixed pipeline order per specification §3.1 */
-export const V1_PIPELINE_AGENT_TYPES: AgentType[] = ['relevance', 'clean', 'route'];
+/** Agent types that can appear in a rule pipeline (execution order is user-defined). */
+export const SUPPORTED_PIPELINE_AGENT_TYPES: AgentType[] = [
+  'relevance',
+  'image_edit',
+  'clean',
+  'route',
+];
 
-export function normalizePipelineAgentIds(
-  agentIds: string[],
-  agents: Array<{ id: string; type: AgentType }>,
-): string[] {
-  const byId = new Map(agents.map((agent) => [agent.id, agent]));
-  const selected = agentIds.filter((id) => byId.has(id));
-  const ordered: string[] = [];
+export type PipelineAgentRef = { id: string; type: AgentType };
 
-  for (const type of V1_PIPELINE_AGENT_TYPES) {
-    for (const id of selected) {
-      if (byId.get(id)?.type === type) {
-        ordered.push(id);
-      }
+/** Preserve caller order; drop duplicate IDs (first occurrence wins). */
+export function resolvePipelineAgentIds(agentIds: string[]): string[] {
+  const seen = new Set<string>();
+  const resolved: string[] = [];
+  for (const id of agentIds) {
+    if (seen.has(id)) {
+      continue;
     }
+    seen.add(id);
+    resolved.push(id);
   }
-
-  return ordered;
+  return resolved;
 }
 
 export function assertPipelineAgentIdsValid(
@@ -35,8 +37,8 @@ export function assertPipelineAgentIdsValid(
     if (!agent.isActive) {
       throw new Error(`Pipeline agent ${agent.id} is inactive`);
     }
-    if (!V1_PIPELINE_AGENT_TYPES.includes(agent.type)) {
-      throw new Error(`Pipeline agent type "${agent.type}" is not supported in v1`);
+    if (!SUPPORTED_PIPELINE_AGENT_TYPES.includes(agent.type)) {
+      throw new Error(`Pipeline agent type "${agent.type}" is not supported in the pipeline`);
     }
   }
 
@@ -47,7 +49,49 @@ export function assertPipelineAgentIdsValid(
   }
   for (const [type, count] of typeCounts) {
     if (count > 1) {
-      throw new Error(`Only one agent of type "${type}" is allowed per pipeline in v1`);
+      throw new Error(`Only one agent of type "${type}" is allowed per pipeline`);
     }
   }
+}
+
+export function getPipelineWarnings(
+  agentIds: string[],
+  agents: PipelineAgentRef[],
+): string[] {
+  if (!agentIds.length) {
+    return [];
+  }
+
+  const byId = new Map(agents.map((agent) => [agent.id, agent]));
+  const orderedTypes = agentIds
+    .map((id) => byId.get(id)?.type)
+    .filter((type): type is AgentType => Boolean(type));
+
+  const warnings: string[] = [];
+
+  const routeIndex = orderedTypes.lastIndexOf('route');
+  if (routeIndex >= 0 && routeIndex !== orderedTypes.length - 1) {
+    warnings.push('Route agent is usually placed last — later steps may not affect routing.');
+  }
+
+  if (!orderedTypes.includes('relevance')) {
+    warnings.push('No relevance agent — messages will not be filtered for topical fit.');
+  }
+
+  const relevanceIndex = orderedTypes.indexOf('relevance');
+  const imageEditIndex = orderedTypes.indexOf('image_edit');
+  if (relevanceIndex >= 0 && imageEditIndex >= 0 && imageEditIndex < relevanceIndex) {
+    warnings.push('Image edit runs before relevance — irrelevant images may still be edited.');
+  }
+
+  return warnings;
+}
+
+/** @deprecated Use resolvePipelineAgentIds — fixed type order is no longer applied. */
+export function normalizePipelineAgentIds(
+  agentIds: string[],
+  agents: Array<{ id: string; type: AgentType }>,
+): string[] {
+  void agents;
+  return resolvePipelineAgentIds(agentIds);
 }

@@ -1,10 +1,14 @@
 import { Controller, Get, Patch, Post, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { ChatsService } from './chats.service';
 import { UpdateChatDto } from './chats.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 
 @Controller('chats')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.admin)
 export class ChatsController {
   constructor(private readonly chatsService: ChatsService) {}
 

@@ -26,10 +26,19 @@ export type RouteStructuredConfig = {
   fallbackBehavior?: string;
 };
 
+export type ImageEditStructuredConfig = {
+  removePrompt?: string;
+  onlyWhenWatermarkDetected?: string;
+  reviewOnFailure?: string;
+  reviewAfterEdit?: string;
+  minConfidence?: string;
+};
+
 export type AgentStructuredConfig =
   | RelevanceStructuredConfig
   | CleanStructuredConfig
-  | RouteStructuredConfig;
+  | RouteStructuredConfig
+  | ImageEditStructuredConfig;
 
 const RELEVANCE_KEYS: (keyof RelevanceStructuredConfig)[] = [
   'inclusionCriteria',
@@ -55,6 +64,14 @@ const ROUTE_KEYS: (keyof RouteStructuredConfig)[] = [
   'exampleMessage',
   'exampleDestination',
   'fallbackBehavior',
+];
+
+const IMAGE_EDIT_KEYS: (keyof ImageEditStructuredConfig)[] = [
+  'removePrompt',
+  'onlyWhenWatermarkDetected',
+  'reviewOnFailure',
+  'reviewAfterEdit',
+  'minConfidence',
 ];
 
 function pickStringFields(
@@ -84,6 +101,8 @@ export function sanitizeStructuredConfig(
     keys = CLEAN_KEYS;
   } else if (type === 'route') {
     keys = ROUTE_KEYS;
+  } else if (type === 'image_edit') {
+    keys = IMAGE_EDIT_KEYS;
   } else {
     keys = RELEVANCE_KEYS;
   }
@@ -110,6 +129,13 @@ export function readRouteStructuredConfig(agent: Agent): RouteStructuredConfig {
     return {};
   }
   return pickStringFields(agent.structuredConfig as Record<string, unknown>, ROUTE_KEYS);
+}
+
+export function readImageEditStructuredConfig(agent: Agent): ImageEditStructuredConfig {
+  if (!agent.structuredConfig || typeof agent.structuredConfig !== 'object') {
+    return {};
+  }
+  return pickStringFields(agent.structuredConfig as Record<string, unknown>, IMAGE_EDIT_KEYS);
 }
 
 function buildRelevancePromptBlock(config: RelevanceStructuredConfig): string {
@@ -156,6 +182,16 @@ function buildRoutePromptBlock(config: RouteStructuredConfig): string {
   return lines.length ? `\n\nStructured routing policy:\n${lines.join('\n\n')}` : '';
 }
 
+function buildImageEditPromptBlock(config: ImageEditStructuredConfig): string {
+  const lines: string[] = [];
+  if (config.removePrompt) lines.push(`Removal goal: ${config.removePrompt}`);
+  if (config.onlyWhenWatermarkDetected === 'true') {
+    lines.push('Run only when upstream relevance detected a watermark.');
+  }
+  if (config.minConfidence) lines.push(`Minimum locate confidence: ${config.minConfidence}`);
+  return lines.length ? `\n\nStructured image edit policy:\n${lines.join('\n')}` : '';
+}
+
 /** @deprecated use readRelevanceStructuredConfig — kept for callers expecting generic read */
 export function readStructuredConfig(agent: Agent): RelevanceStructuredConfig {
   return readRelevanceStructuredConfig(agent);
@@ -167,6 +203,9 @@ export function buildStructuredConfigPromptBlock(agent: Agent): string {
   }
   if (agent.type === 'route') {
     return buildRoutePromptBlock(readRouteStructuredConfig(agent));
+  }
+  if (agent.type === 'image_edit') {
+    return buildImageEditPromptBlock(readImageEditStructuredConfig(agent));
   }
   return buildRelevancePromptBlock(readRelevanceStructuredConfig(agent));
 }

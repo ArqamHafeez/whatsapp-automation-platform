@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { AgentsModule } from '../agents/agents.module';
 import { PipelineModule } from '../pipeline/pipeline.module';
@@ -7,7 +8,7 @@ import { RulesController } from './rules.controller';
 import { RulesService } from './rules.service';
 
 @Module({
-  imports: [PrismaModule, AgentsModule, PipelineModule, forwardRef(() => DeliveryModule)],
+  imports: [PrismaModule, AuthModule, AgentsModule, PipelineModule, forwardRef(() => DeliveryModule)],
   controllers: [RulesController],
   providers: [RulesService],
   exports: [RulesService],

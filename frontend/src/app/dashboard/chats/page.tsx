@@ -18,6 +18,28 @@ interface Chat {
   type: string;
   externalChatId?: string;
   description?: string | null;
+  maxSendsPerHour?: number | null;
+  maxSendsPerDay?: number | null;
+}
+
+type CapDraft = {
+  maxSendsPerHour: string;
+  maxSendsPerDay: string;
+};
+
+function formatCap(value: number | null | undefined): string {
+  if (value == null) return '—';
+  return String(value);
+}
+
+function parseCapInput(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error('Caps must be whole numbers of 1 or greater, or empty to clear');
+  }
+  return n;
 }
 
 export default function ChatsPage() {
@@ -30,6 +52,9 @@ export default function ChatsPage() {
   const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
   const [descriptionDraft, setDescriptionDraft] = useState('');
   const [savingDescriptionId, setSavingDescriptionId] = useState<string | null>(null);
+  const [editingCapsId, setEditingCapsId] = useState<string | null>(null);
+  const [capsDraft, setCapsDraft] = useState<CapDraft>({ maxSendsPerHour: '', maxSendsPerDay: '' });
+  const [savingCapsId, setSavingCapsId] = useState<string | null>(null);
 
   useEffect(() => {
     loadConnections();
@@ -92,6 +117,7 @@ export default function ChatsPage() {
   const beginEditDescription = (chat: Chat) => {
     setEditingDescriptionId(chat.id);
     setDescriptionDraft(chat.description || '');
+    setEditingCapsId(null);
   };
 
   const cancelEditDescription = () => {
@@ -119,6 +145,42 @@ export default function ChatsPage() {
     }
   };
 
+  const beginEditCaps = (chat: Chat) => {
+    setEditingCapsId(chat.id);
+    setCapsDraft({
+      maxSendsPerHour: chat.maxSendsPerHour != null ? String(chat.maxSendsPerHour) : '',
+      maxSendsPerDay: chat.maxSendsPerDay != null ? String(chat.maxSendsPerDay) : '',
+    });
+    setEditingDescriptionId(null);
+  };
+
+  const cancelEditCaps = () => {
+    setEditingCapsId(null);
+    setCapsDraft({ maxSendsPerHour: '', maxSendsPerDay: '' });
+  };
+
+  const saveCaps = async (chatId: string) => {
+    setSavingCapsId(chatId);
+    try {
+      const maxSendsPerHour = parseCapInput(capsDraft.maxSendsPerHour);
+      const maxSendsPerDay = parseCapInput(capsDraft.maxSendsPerDay);
+      await fetchApi(`/chats/${chatId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ maxSendsPerHour, maxSendsPerDay }),
+      });
+      setChats((prev) =>
+        prev.map((chat) =>
+          chat.id === chatId ? { ...chat, maxSendsPerHour, maxSendsPerDay } : chat,
+        ),
+      );
+      cancelEditCaps();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to save send caps');
+    } finally {
+      setSavingCapsId(null);
+    }
+  };
+
   const filteredChats = chats.filter((c) => chatMatchesSearch(c, search));
 
   return (
@@ -128,7 +190,7 @@ export default function ChatsPage() {
           <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Chats & Groups</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
             Sync and browse chats for each WhatsApp connection. Add destination descriptions to help route agents.
-            Choose sources and destinations per rule on{' '}
+            Set optional send caps per destination group. Choose sources and destinations per rule on{' '}
             <Link href="/dashboard/rules" style={{ color: 'var(--primary)' }}>
               Forwarding Rules
             </Link>
@@ -147,7 +209,8 @@ export default function ChatsPage() {
         }}
       >
         Destination descriptions are passed to route agents (e.g. &quot;Remote engineering roles only&quot;). Source
-        descriptions give relevance agents extra context.
+        descriptions give relevance agents extra context. Send caps limit how many messages can be forwarded to a
+        destination per hour or day — excess sends stay queued and retry automatically when the window opens.
       </div>
 
       <div className="card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -208,6 +271,7 @@ export default function ChatsPage() {
                     <th style={{ padding: '1rem', fontWeight: 500 }}>Chat Name</th>
                     <th style={{ padding: '1rem', fontWeight: 500 }}>Type</th>
                     <th style={{ padding: '1rem', fontWeight: 500, minWidth: '280px' }}>Description (for AI routing)</th>
+                    <th style={{ padding: '1rem', fontWeight: 500, minWidth: '180px' }}>Send caps</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -288,11 +352,77 @@ export default function ChatsPage() {
                           </button>
                         )}
                       </td>
+                      <td style={{ padding: '1rem' }}>
+                        {editingCapsId === chat.id ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: '2.5rem' }}>Hr</label>
+                              <input
+                                type="number"
+                                min={1}
+                                className="input-field"
+                                value={capsDraft.maxSendsPerHour}
+                                onChange={(e) => setCapsDraft((d) => ({ ...d, maxSendsPerHour: e.target.value }))}
+                                placeholder="∞"
+                                style={{ width: '5rem', fontSize: '0.8125rem' }}
+                              />
+                              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: '2rem' }}>Day</label>
+                              <input
+                                type="number"
+                                min={1}
+                                className="input-field"
+                                value={capsDraft.maxSendsPerDay}
+                                onChange={(e) => setCapsDraft((d) => ({ ...d, maxSendsPerDay: e.target.value }))}
+                                placeholder="∞"
+                                style={{ width: '5rem', fontSize: '0.8125rem' }}
+                              />
+                              <button
+                                type="button"
+                                className="btn-primary"
+                                style={{ padding: '0.35rem' }}
+                                disabled={savingCapsId === chat.id}
+                                onClick={() => saveCaps(chat.id)}
+                              >
+                                <Save size={14} />
+                              </button>
+                              <button type="button" className="btn-secondary" style={{ padding: '0.35rem' }} onClick={cancelEditCaps}>
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => beginEditCaps(chat)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              textAlign: 'left',
+                              color:
+                                chat.maxSendsPerHour != null || chat.maxSendsPerDay != null
+                                  ? 'var(--text-secondary)'
+                                  : 'var(--text-muted)',
+                              fontSize: '0.8125rem',
+                              cursor: 'pointer',
+                              width: '100%',
+                            }}
+                          >
+                            {chat.maxSendsPerHour != null || chat.maxSendsPerDay != null ? (
+                              <>
+                                {formatCap(chat.maxSendsPerHour)}/hr · {formatCap(chat.maxSendsPerDay)}/day
+                              </>
+                            ) : (
+                              'Set caps…'
+                            )}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {filteredChats.length === 0 && (
                     <tr>
-                      <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                         No chats found. Try syncing from device.
                       </td>
                     </tr>

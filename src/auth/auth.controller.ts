@@ -6,11 +6,6 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('register')
-  async register(@Body() body: { email: string; password: string; name: string; organizationSlug: string }) {
-    return this.authService.register(body.email, body.password, body.name, body.organizationSlug);
-  }
-
   @Post('login')
   async login(@Body() body: { email: string; password: string }) {
     return this.authService.login(body.email, body.password);
@@ -18,13 +13,13 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async me(@Req() req: any) {
+  async me(@Req() req: { user: { userId: string } }) {
     return this.authService.me(req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('org')
-  async getOrg(@Req() req: any) {
+  async getOrg(@Req() req: { user: { userId: string } }) {
     return this.authService.getOrg(req.user.userId);
   }
 }

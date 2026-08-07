@@ -43,6 +43,10 @@ interface UpdateChatData {
 
   description?: string;
 
+  maxSendsPerHour?: number | null;
+
+  maxSendsPerDay?: number | null;
+
 }
 
 
@@ -397,11 +401,17 @@ export class ChatsService {
 
     if (data.description !== undefined) updateData.description = data.description.trim() || null;
 
+    if (data.maxSendsPerHour !== undefined) updateData.maxSendsPerHour = data.maxSendsPerHour;
+
+    if (data.maxSendsPerDay !== undefined) updateData.maxSendsPerDay = data.maxSendsPerDay;
+
 
 
     if (Object.keys(updateData).length === 0) {
 
-      throw new BadRequestException('Provide isSource, isDestination, and/or description to update');
+      throw new BadRequestException(
+        'Provide isSource, isDestination, description, and/or send caps to update',
+      );
 
     }
 

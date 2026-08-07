@@ -8,7 +8,7 @@ import {
   MaxLength,
 } from 'class-validator';
 
-export const AGENT_TYPES = ['relevance', 'clean', 'route', 'custom'] as const;
+export const AGENT_TYPES = ['relevance', 'clean', 'route', 'image_edit', 'custom'] as const;
 export type AgentTypeDto = (typeof AGENT_TYPES)[number];
 
 export class CreateAgentDto {

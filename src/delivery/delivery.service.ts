@@ -11,6 +11,8 @@ import {
 import { isDeliverableWhatsAppJid, toWahaChatId } from '../common/whatsapp/jid-deliverable';
 import { chatJidAliases, findAllChatsByInboundJid } from '../common/whatsapp/inbound-chat-jid';
 import { whatsAppJidsMatch } from '../common/whatsapp/jid-match';
+import { computeCapDefer, CapDeferResult, pickCapConfigFromChats } from './destination-cap';
+import { normalizeWhatsAppJid } from '../common/whatsapp/jid-match';
 
 export interface DeliveryJob {
   messageId: string;
@@ -63,6 +65,8 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
   private readonly RETRY_POLL_INTERVAL_MS = 30_000;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private isPolling = false;
+  /** Serializes cap checks + sends per destination to prevent burst race conditions. */
+  private destinationLocks = new Map<string, Promise<void>>();
 
   constructor(private prisma: PrismaService) {}
 
@@ -153,8 +157,52 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     return { queued: true, sendLogId: sendLog.id };
   }
 
-  private async processDelivery(sendLogId: string, job: DeliveryJob) {
+  private destinationLockKey(connectionId: string, destinationChatId: string): string {
+    return `${connectionId}:${normalizeWhatsAppJid(destinationChatId)}`;
+  }
+
+  private async withDestinationLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    const previous = this.destinationLocks.get(key) ?? Promise.resolve();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const chain = previous.then(() => gate);
+    this.destinationLocks.set(key, chain);
+    await previous;
     try {
+      return await fn();
+    } finally {
+      release();
+      if (this.destinationLocks.get(key) === chain) {
+        this.destinationLocks.delete(key);
+      }
+    }
+  }
+
+  private async processDelivery(sendLogId: string, job: DeliveryJob) {
+    const lockKey = this.destinationLockKey(job.connectionId, job.destinationChatId);
+    return this.withDestinationLock(lockKey, () => this.processDeliveryUnderLock(sendLogId, job));
+  }
+
+  private async processDeliveryUnderLock(sendLogId: string, job: DeliveryJob) {
+    try {
+      const capDefer = await this.checkDestinationCap(sendLogId, job);
+      if (capDefer) {
+        await this.prisma.sendLog.update({
+          where: { id: sendLogId },
+          data: {
+            status: 'pending',
+            nextAttemptAt: capDefer.nextAttemptAt,
+            errorDetails: capDefer.reason,
+          },
+        });
+        console.log(
+          `[FORWARD DEFERRED] ${job.destinationChatId}: ${capDefer.reason} — retry at ${capDefer.nextAttemptAt.toISOString()}`,
+        );
+        return { success: false, deferred: true, willRetryAt: capDefer.nextAttemptAt };
+      }
+
       await this.enforceRateLimit(job.connectionId);
       await this.sleep(Math.floor(Math.random() * this.JITTER_MS));
 
@@ -227,7 +275,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
 
       await this.prisma.sendLog.update({
         where: { id: sendLogId },
-        data: { status: 'sent', sentAt: new Date(), nextAttemptAt: null },
+        data: { status: 'sent', sentAt: new Date(), nextAttemptAt: null, errorDetails: null },
       });
 
       return { success: true };
@@ -375,18 +423,19 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Background poller: picks up failed sends whose nextAttemptAt has passed and
-   * retries them. Uses the existing (status, nextAttemptAt) index on SendLog.
+   * Background poller: picks up failed sends and cap-deferred pending sends whose
+   * nextAttemptAt has passed. Uses the (status, nextAttemptAt) index on SendLog.
    */
   private async pollDueRetries() {
     if (this.isPolling) return;
     this.isPolling = true;
 
     try {
+      const now = new Date();
       const due = await this.prisma.sendLog.findMany({
         where: {
-          status: 'failed',
-          nextAttemptAt: { lte: new Date() },
+          nextAttemptAt: { lte: now },
+          OR: [{ status: 'failed' }, { status: 'pending' }],
         },
         take: 20,
       });
@@ -412,16 +461,138 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
           mediaUrl: message.mediaUrl,
         };
 
-        await this.prisma.sendLog.update({
-          where: { id: sendLog.id },
-          data: { attempts: { increment: 1 }, lastAttemptAt: new Date(), status: 'pending' },
-        });
+        const isCapDefer = sendLog.status === 'pending';
+        if (isCapDefer) {
+          await this.prisma.sendLog.update({
+            where: { id: sendLog.id },
+            data: { lastAttemptAt: new Date() },
+          });
+        } else {
+          await this.prisma.sendLog.update({
+            where: { id: sendLog.id },
+            data: { attempts: { increment: 1 }, lastAttemptAt: new Date(), status: 'pending' },
+          });
+        }
 
         await this.processDelivery(sendLog.id, job);
       }
     } finally {
       this.isPolling = false;
     }
+  }
+
+  /**
+   * Resolves per-destination send caps from the rule's destination chat rows (preferred)
+   * or JID alias matching, then counts recent successful + in-flight sends.
+   */
+  private async checkDestinationCap(
+    sendLogId: string,
+    job: DeliveryJob,
+  ): Promise<CapDeferResult | null> {
+    const aliasJids = new Set<string>([job.destinationChatId]);
+    let capSources: Array<{
+      maxSendsPerHour: number | null;
+      maxSendsPerDay: number | null;
+      externalChatId: string;
+      metadata?: unknown;
+    }> = [];
+
+    if (job.ruleId) {
+      const rule = await this.prisma.rule.findUnique({
+        where: { id: job.ruleId },
+        select: { destinationChatIds: true },
+      });
+      if (rule?.destinationChatIds.length) {
+        const destChats = await this.prisma.chat.findMany({
+          where: { id: { in: rule.destinationChatIds }, connectionId: job.connectionId },
+          select: {
+            id: true,
+            externalChatId: true,
+            metadata: true,
+            maxSendsPerHour: true,
+            maxSendsPerDay: true,
+          },
+        });
+        const matchingDestChats = destChats.filter((chat) =>
+          whatsAppJidsMatch(chat.externalChatId, job.destinationChatId),
+        );
+        capSources = matchingDestChats.length ? matchingDestChats : destChats;
+        for (const chat of capSources.length ? capSources : destChats) {
+          for (const alias of chatJidAliases(chat)) {
+            aliasJids.add(alias);
+          }
+        }
+      }
+    }
+
+    if (!capSources.length) {
+      const connectionChats = await this.prisma.chat.findMany({
+        where: { connectionId: job.connectionId },
+        select: {
+          id: true,
+          externalChatId: true,
+          metadata: true,
+          maxSendsPerHour: true,
+          maxSendsPerDay: true,
+        },
+      });
+      const matches = findAllChatsByInboundJid(connectionChats, job.destinationChatId);
+      capSources = matches;
+      for (const chat of matches) {
+        for (const alias of chatJidAliases(chat)) {
+          aliasJids.add(alias);
+        }
+      }
+    }
+
+    const caps = pickCapConfigFromChats(capSources);
+    if (!caps) {
+      return null;
+    }
+
+    const now = new Date();
+    const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const jids = [...aliasJids];
+
+    const [sentLogsHour, sentLogsDay, reservedCount] = await Promise.all([
+      this.prisma.sendLog.findMany({
+        where: {
+          status: 'sent',
+          sentAt: { gte: hourAgo },
+          destinationChatId: { in: jids },
+        },
+        select: { sentAt: true },
+        orderBy: { sentAt: 'asc' },
+      }),
+      this.prisma.sendLog.findMany({
+        where: {
+          status: 'sent',
+          sentAt: { gte: dayAgo },
+          destinationChatId: { in: jids },
+        },
+        select: { sentAt: true },
+        orderBy: { sentAt: 'asc' },
+      }),
+      this.prisma.sendLog.count({
+        where: {
+          id: { not: sendLogId },
+          status: 'pending',
+          destinationChatId: { in: jids },
+          OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
+        },
+      }),
+    ]);
+
+    return computeCapDefer({
+      caps,
+      sentCountLastHour: sentLogsHour.length,
+      sentCountLastDay: sentLogsDay.length,
+      reservedCount,
+      oldestSentAtInHour: sentLogsHour[0]?.sentAt ?? null,
+      oldestSentAtInDay: sentLogsDay[0]?.sentAt ?? null,
+      now,
+    });
   }
 
   private async enforceRateLimit(connectionId: string) {

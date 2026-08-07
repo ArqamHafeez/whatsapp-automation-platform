@@ -1,10 +1,14 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Req, UseGuards } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { AgentsService } from './agents.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { CreateAgentDto, UpdateAgentDto } from './agents.dto';
 
 @Controller('agents')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.admin)
 export class AgentsController {
   constructor(private readonly agentsService: AgentsService) {}
 

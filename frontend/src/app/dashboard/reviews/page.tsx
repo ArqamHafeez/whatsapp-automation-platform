@@ -14,6 +14,9 @@ interface ReviewItem {
     body?: string | null;
     reviewReason?: string;
     destinationChatIds?: string[];
+    mediaUrl?: string | null;
+    originalMediaUrl?: string | null;
+    type?: string;
   };
   message?: {
     body?: string | null;
@@ -159,6 +162,45 @@ export default function ReviewsPage() {
                 >
                   {item.payload?.body || item.message?.body || '(no text)'}
                 </div>
+
+                {(item.payload?.originalMediaUrl || item.payload?.mediaUrl) &&
+                (item.payload?.type === 'image' || item.message?.type === 'image') ? (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: item.payload?.originalMediaUrl ? '1fr 1fr' : '1fr',
+                      gap: '0.75rem',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    {item.payload?.originalMediaUrl ? (
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                          Original
+                        </div>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.payload.originalMediaUrl}
+                          alt="Original"
+                          style={{ maxWidth: '100%', borderRadius: 'var(--radius-sm)' }}
+                        />
+                      </div>
+                    ) : null}
+                    {item.payload?.mediaUrl ? (
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                          {item.payload?.originalMediaUrl ? 'Edited preview' : 'Image'}
+                        </div>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.payload.mediaUrl}
+                          alt="Preview"
+                          style={{ maxWidth: '100%', borderRadius: 'var(--radius-sm)' }}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                   From {item.message?.sender || 'unknown'} · Expires {new Date(item.expiresAt).toLocaleString()}

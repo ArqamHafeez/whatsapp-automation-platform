@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Agent, Message, Prisma, Rule } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AiService } from '../common/ai/ai.service';
+import { ImageEditService } from '../common/image/image-edit.service';
 import { getAiConfig } from '../common/ai/ai.config';
 import { AgentRunContext } from '../common/ai/ai.types';
 import { findChatByInboundJid } from '../common/whatsapp/inbound-chat-jid';
@@ -19,6 +20,7 @@ export class PipelineService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiService: AiService,
+    private readonly imageEditService: ImageEditService,
   ) {}
 
   async runForRule(input: PipelineRunInput): Promise<PipelineRunResult> {
@@ -67,14 +69,16 @@ export class PipelineService {
     const stepLogs: PipelineStepLog[] = [];
     let body = message.body;
     let destinationChatIds = [...rule.destinationChatIds];
-    const mediaUrl = message.mediaUrl;
+    let mediaUrl = message.mediaUrl;
+    let originalMediaUrl: string | null = message.mediaUrl;
     const type = message.type;
     let needsReview = false;
+    let watermarkDetected = false;
 
     for (const agent of agents) {
       const agentContext: AgentRunContext = {
         ...context,
-        message: { ...context.message, body },
+        message: { ...context.message, body, mediaUrl },
         destinationChats: this.buildDestinationChats(context, destinationChatIds),
       };
 
@@ -92,6 +96,41 @@ export class PipelineService {
           destinationChatIds,
           onNeedsReview: () => {
             needsReview = true;
+          },
+          onWatermarkDetected: () => {
+            watermarkDetected = true;
+          },
+        });
+        if (stop) {
+          return stop;
+        }
+        continue;
+      }
+
+      if (agent.type === 'image_edit') {
+        const stop = await this.runImageEditStep({
+          agent,
+          agentContext,
+          rule,
+          message,
+          input,
+          stepLogs,
+          body,
+          type,
+          mediaUrl,
+          destinationChatIds,
+          watermarkDetected,
+          onMediaUpdated: (nextMediaUrl, nextOriginal) => {
+            mediaUrl = nextMediaUrl;
+            if (nextOriginal) {
+              originalMediaUrl = nextOriginal;
+            }
+          },
+          onNeedsReview: () => {
+            needsReview = true;
+          },
+          onReviewCleared: () => {
+            needsReview = false;
           },
         });
         if (stop) {
@@ -163,6 +202,7 @@ export class PipelineService {
       body,
       type,
       mediaUrl,
+      originalMediaUrl,
       destinationChatIds,
       needsReview,
     });
@@ -211,6 +251,7 @@ export class PipelineService {
     mediaUrl: string | null;
     destinationChatIds: string[];
     onNeedsReview: () => void;
+    onWatermarkDetected?: () => void;
   }): Promise<PipelineRunResult | null> {
     try {
       const result = await this.aiService.runRelevanceAgent(opts.agent, opts.agentContext);
@@ -230,13 +271,69 @@ export class PipelineService {
         });
       }
 
+      if (result.detectedWatermark) {
+        opts.onWatermarkDetected?.();
+      }
+
       if (result.needsReview) {
         opts.onNeedsReview();
-        opts.stepLogs[opts.stepLogs.length - 1].note = 'needsReview flagged for human review';
+        opts.stepLogs[opts.stepLogs.length - 1].note = result.detectedWatermark
+          ? 'watermark detected — review or image edit may follow'
+          : 'needsReview flagged for human review';
       }
       return null;
     } catch (err) {
       return this.handleAgentError(opts, err as Error, 'Relevance');
+    }
+  }
+
+  private async runImageEditStep(opts: {
+    agent: Agent;
+    agentContext: AgentRunContext;
+    rule: Rule;
+    message: Message;
+    input: PipelineRunInput;
+    stepLogs: PipelineStepLog[];
+    body: string | null;
+    type: string;
+    mediaUrl: string | null;
+    destinationChatIds: string[];
+    watermarkDetected: boolean;
+    onMediaUpdated: (mediaUrl: string | null, originalMediaUrl: string | null) => void;
+    onNeedsReview: () => void;
+    onReviewCleared: () => void;
+  }): Promise<PipelineRunResult | null> {
+    try {
+      const result = await this.imageEditService.runImageEditAgent(opts.agent, opts.agentContext, {
+        watermarkHint: opts.watermarkDetected,
+      });
+
+      opts.stepLogs.push({
+        agentId: opts.agent.id,
+        agentName: opts.agent.name,
+        agentType: opts.agent.type,
+        status: result.edited ? 'completed' : 'skipped_type',
+        output: result,
+        note: result.reason,
+      });
+
+      if (result.edited && result.mediaUrl) {
+        opts.onMediaUpdated(result.mediaUrl, result.originalMediaUrl);
+        await this.prisma.message.update({
+          where: { id: opts.message.id },
+          data: { mediaUrl: result.mediaUrl },
+        });
+        if (!result.needsReview) {
+          opts.onReviewCleared();
+        }
+      } else if (result.needsReview) {
+        opts.onNeedsReview();
+      }
+
+      return null;
+    } catch (err) {
+      opts.onNeedsReview();
+      return this.handleAgentError(opts, err as Error, 'Image edit');
     }
   }
 
@@ -499,6 +596,7 @@ export class PipelineService {
       body?: string | null;
       type?: string;
       mediaUrl?: string | null;
+      originalMediaUrl?: string | null;
       destinationChatIds?: string[];
       needsReview?: boolean;
       reviewReasonOverride?: string;
@@ -517,6 +615,7 @@ export class PipelineService {
         body,
         type,
         mediaUrl,
+        originalMediaUrl: opts.originalMediaUrl ?? message.mediaUrl,
         destinationChatIds: destinations,
         needsReview,
         reviewReasonOverride: opts.reviewReasonOverride,
@@ -545,6 +644,7 @@ export class PipelineService {
       body: string | null;
       type: string;
       mediaUrl: string | null;
+      originalMediaUrl?: string | null;
       destinationChatIds: string[];
       needsReview: boolean;
       reviewReasonOverride?: string;
@@ -575,6 +675,7 @@ export class PipelineService {
       body: opts.body,
       type: opts.type,
       mediaUrl: opts.mediaUrl,
+      originalMediaUrl: opts.originalMediaUrl ?? null,
       destinationChatIds: opts.destinationChatIds,
       pipelineMode: opts.pipelineMode,
       reviewReason,

@@ -84,6 +84,23 @@ export const DEFAULT_CLEAN_SYSTEM_PROMPT =
 export const DEFAULT_ROUTE_SYSTEM_PROMPT =
   'You route inbound WhatsApp messages to the best destination chat(s) for a forwarding rule. Use each destination title and description to decide, but in destinationChatIds return ONLY the exact chatId UUID strings from the list — never group titles or names. Respond with JSON only.';
 
+export const DEFAULT_IMAGE_EDIT_SYSTEM_PROMPT = `You locate watermark and branding overlay regions on WhatsApp-forwarded images. Respond with JSON only.
+
+Return normalized bounding boxes (0-1 coordinates relative to image width/height) for logos, channel names, "forwarded from" stamps, and corner branding.
+Set hasWatermark:true when any overlay should be removed before re-posting.
+Do not describe pixel editing steps — only detection boxes.`;
+
+export function buildDefaultImageEditUserPrompt(context: AgentRunContext): string {
+  const lines = [
+    `Rule: ${context.rule.name}`,
+    context.rule.description ? `Rule description: ${context.rule.description}` : null,
+    context.sourceChat?.title ? `Source chat: ${context.sourceChat.title}` : null,
+    `Message caption: ${context.message.body?.trim() || '(empty)'}`,
+    'Locate watermark/branding regions to remove before forwarding this image.',
+  ].filter(Boolean);
+  return lines.join('\n');
+}
+
 export function buildAgentPrompts(
   agent: Agent,
   context: AgentRunContext,
@@ -111,6 +128,7 @@ export function buildAgentPrompts(
     relevance: DEFAULT_RELEVANCE_SYSTEM_PROMPT,
     clean: DEFAULT_CLEAN_SYSTEM_PROMPT,
     route: DEFAULT_ROUTE_SYSTEM_PROMPT,
+    image_edit: DEFAULT_IMAGE_EDIT_SYSTEM_PROMPT,
   };
 
   const defaultSystem =

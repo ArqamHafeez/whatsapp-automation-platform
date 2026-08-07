@@ -1,8 +1,12 @@
 import { Controller, Get, Post, Body, Param, Req, UseGuards, Res } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import type { Response } from 'express';
 import { ConnectorService } from './connector.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+
 class CreateConnectionDto {
   @IsString()
   @IsNotEmpty()
@@ -11,7 +15,8 @@ class CreateConnectionDto {
 }
 
 @Controller('connections')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.admin)
 export class ConnectorController {
   constructor(private readonly connectorService: ConnectorService) {}
 

@@ -1,7 +1,9 @@
 import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { SanitizedUser } from './auth-user.types';
 
 @Injectable()
 export class AuthService {
@@ -10,41 +12,38 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(email: string, password: string, name: string, organizationSlug: string) {
-    try {
-      const existingUser = await this.prisma.user.findUnique({ where: { email } });
-      if (existingUser) {
-        throw new ConflictException('User already exists');
-      }
-
-      let organization = await this.prisma.organization.findUnique({ where: { slug: organizationSlug } });
-      if (!organization) {
-        organization = await this.prisma.organization.create({
-          data: { name: organizationSlug, slug: organizationSlug },
-        });
-      }
-
-      const passwordHash = await bcrypt.hash(password, 10);
-      const user = await this.prisma.user.create({
-        data: {
-          email,
-          name,
-          passwordHash,
-          organizationId: organization.id,
-          isAdmin: true,
-        },
-      });
-
-      const token = await this.createSession(user.id);
-      return { user: this.sanitizeUser(user), token };
-    } catch (error) {
-      console.error('Register error:', error);
-      throw error;
+  async createUserInOrg(opts: {
+    email: string;
+    password: string;
+    name: string;
+    role: UserRole;
+    organizationId: string;
+  }): Promise<SanitizedUser> {
+    const existingUser = await this.prisma.user.findUnique({ where: { email: opts.email } });
+    if (existingUser) {
+      throw new ConflictException('User already exists');
     }
+
+    const passwordHash = await bcrypt.hash(opts.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        email: opts.email,
+        name: opts.name,
+        passwordHash,
+        role: opts.role,
+        isAdmin: opts.role === UserRole.admin,
+        organizationId: opts.organizationId,
+      },
+    });
+
+    return this.sanitizeUser(user);
   }
 
   async login(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    });
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -90,8 +89,25 @@ export class AuthService {
     return token;
   }
 
-  private sanitizeUser(user: any) {
-    const { passwordHash, ...rest } = user;
-    return rest;
+  sanitizeUser(user: {
+    id: string;
+    email: string;
+    name: string | null;
+    role?: UserRole | null;
+    isAdmin: boolean;
+    organizationId: string;
+    createdAt: Date;
+    passwordHash?: string;
+  }): SanitizedUser {
+    const role = user.role ?? (user.isAdmin ? UserRole.admin : UserRole.reviewer);
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role,
+      isAdmin: role === UserRole.admin || user.isAdmin,
+      organizationId: user.organizationId,
+      createdAt: user.createdAt,
+    };
   }
 }

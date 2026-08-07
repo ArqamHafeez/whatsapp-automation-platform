@@ -18,9 +18,10 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const data = await fetchApi<{ token: string; user: { id: string; email: string; organizationId: string } }>(
-        '/auth/login',
-        {
+      const data = await fetchApi<{
+        token: string;
+        user: { id: string; email: string; name?: string | null; role?: 'admin' | 'reviewer'; organizationId: string };
+      }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
@@ -33,6 +34,8 @@ export default function LoginPage() {
       login(token, {
         id: data.user.id,
         email: data.user.email,
+        name: data.user.name,
+        role: data.user.role === 'reviewer' ? 'reviewer' : 'admin',
         organizationId: data.user.organizationId,
       });
     } catch (err: any) {

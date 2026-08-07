@@ -9,7 +9,11 @@ import { normalizeWhatsAppJid } from '../common/whatsapp/jid-match';
 import { isDeliverableWhatsAppJid } from '../common/whatsapp/jid-deliverable';
 import { CreateRuleDto, UpdateRuleDto } from './rules.dto';
 import { SimulateRuleDto } from './rules.simulate.dto';
-import { assertPipelineAgentIdsValid, normalizePipelineAgentIds } from '../pipeline/pipeline-order';
+import {
+  assertPipelineAgentIdsValid,
+  getPipelineWarnings,
+  resolvePipelineAgentIds,
+} from '../pipeline/pipeline-order';
 
 @Injectable()
 export class RulesService {
@@ -88,21 +92,26 @@ export class RulesService {
     }
   }
 
-  private async normalizeAndValidatePipeline(orgId: string, agentIds: string[]): Promise<string[]> {
-    if (!agentIds.length) {
+  private async resolveAndValidatePipeline(orgId: string, agentIds: string[]): Promise<string[]> {
+    const resolvedIds = resolvePipelineAgentIds(agentIds);
+    if (!resolvedIds.length) {
       return [];
     }
-    await this.agentsService.assertAgentsInOrg(orgId, agentIds);
+    await this.agentsService.assertAgentsInOrg(orgId, resolvedIds);
     const agents = await this.prisma.agent.findMany({
-      where: { orgId, id: { in: agentIds } },
+      where: { orgId, id: { in: resolvedIds } },
       select: { id: true, type: true, isActive: true },
     });
     try {
-      assertPipelineAgentIdsValid(agentIds, agents);
+      assertPipelineAgentIdsValid(resolvedIds, agents);
     } catch (err) {
       throw new BadRequestException((err as Error).message);
     }
-    return normalizePipelineAgentIds(agentIds, agents);
+    const warnings = getPipelineWarnings(resolvedIds, agents);
+    for (const warning of warnings) {
+      this.logger.warn(`Pipeline configuration: ${warning}`);
+    }
+    return resolvedIds;
   }
 
   async listRules(userId: string) {
@@ -123,7 +132,7 @@ export class RulesService {
       data.destinationChatIds,
     );
 
-    const pipelineAgentIds = await this.normalizeAndValidatePipeline(orgId, data.pipelineAgentIds ?? []);
+    const pipelineAgentIds = await this.resolveAndValidatePipeline(orgId, data.pipelineAgentIds ?? []);
 
     return this.prisma.rule.create({
       data: {
@@ -181,7 +190,7 @@ export class RulesService {
     if (data.reviewMode !== undefined) updateData.reviewMode = data.reviewMode;
     if (data.reviewTimeoutMinutes !== undefined) updateData.reviewTimeoutMinutes = data.reviewTimeoutMinutes;
     if (data.pipelineAgentIds !== undefined) {
-      updateData.pipelineAgentIds = await this.normalizeAndValidatePipeline(orgId, nextPipelineAgentIds);
+      updateData.pipelineAgentIds = await this.resolveAndValidatePipeline(orgId, nextPipelineAgentIds);
     }
 
     return this.prisma.rule.update({

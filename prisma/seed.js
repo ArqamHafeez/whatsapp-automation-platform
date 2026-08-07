@@ -3,10 +3,40 @@ const bcrypt = require('bcrypt');
 
 const prisma = new PrismaClient();
 
+async function upsertUser({ email, name, password, role, orgId }) {
+  const passwordHash = await bcrypt.hash(password, 10);
+  let user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        email,
+        name,
+        passwordHash,
+        role,
+        isAdmin: role === 'admin',
+        organizationId: orgId,
+      },
+    });
+    console.log(`✅ User created (${role}):`, user.email);
+  } else {
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        name,
+        role,
+        isAdmin: role === 'admin',
+        passwordHash,
+      },
+    });
+    console.log(`ℹ️ User updated (${role}, password reset):`, user.email);
+  }
+  return user;
+}
+
 async function main() {
   console.log('🌱 Seeding database...');
 
-  // Check if org exists
   let org = await prisma.organization.findUnique({
     where: { slug: 'demo' },
   });
@@ -23,28 +53,22 @@ async function main() {
     console.log('ℹ️ Organization already exists:', org.id);
   }
 
-  // Check if user exists
-  let user = await prisma.user.findUnique({
-    where: { email: 'admin@demo.com' },
+  await upsertUser({
+    email: 'admin@demo.com',
+    name: 'Admin User',
+    password: 'admin123',
+    role: 'admin',
+    orgId: org.id,
   });
 
-  if (!user) {
-    const passwordHash = await bcrypt.hash('admin123', 10);
-    user = await prisma.user.create({
-      data: {
-        email: 'admin@demo.com',
-        name: 'Admin User',
-        passwordHash,
-        isAdmin: true,
-        organizationId: org.id,
-      },
-    });
-    console.log('✅ Admin user created:', user.email);
-  } else {
-    console.log('ℹ️ Admin user already exists:', user.email);
-  }
+  await upsertUser({
+    email: 'reviewer@demo.com',
+    name: 'Reviewer User',
+    password: 'reviewer123',
+    role: 'reviewer',
+    orgId: org.id,
+  });
 
-  // Check if connection exists
   let connection = await prisma.whatsAppConnection.findFirst({
     where: { name: 'main-instance' },
   });
@@ -62,7 +86,9 @@ async function main() {
     console.log('ℹ️ WhatsApp connection already exists:', connection.id);
   }
 
-  console.log('\n🎉 Seed complete! Login with: admin@demo.com / admin123');
+  console.log('\n🎉 Seed complete!');
+  console.log('Admin:    admin@demo.com / admin123');
+  console.log('Reviewer: reviewer@demo.com / reviewer123');
 }
 
 main()

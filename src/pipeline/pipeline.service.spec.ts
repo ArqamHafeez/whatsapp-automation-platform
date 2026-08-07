@@ -3,11 +3,12 @@ import { NotFoundException } from '@nestjs/common';
 import { PipelineService } from './pipeline.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AiService } from '../common/ai/ai.service';
+import { ImageEditService } from '../common/image/image-edit.service';
 
 describe('PipelineService', () => {
   let service: PipelineService;
   let prisma: {
-    message: { findUnique: jest.Mock };
+    message: { findUnique: jest.Mock; update: jest.Mock };
     rule: { findFirst: jest.Mock };
     agent: { findMany: jest.Mock };
     chat: { findMany: jest.Mock };
@@ -21,6 +22,8 @@ describe('PipelineService', () => {
     runCleanAgent: jest.Mock;
     runRouteAgent: jest.Mock;
   };
+
+  let imageEditService: { runImageEditAgent: jest.Mock };
 
   const messageId = 'msg-1';
   const ruleId = 'rule-1';
@@ -39,7 +42,7 @@ describe('PipelineService', () => {
 
   beforeEach(async () => {
     prisma = {
-      message: { findUnique: jest.fn() },
+      message: { findUnique: jest.fn(), update: jest.fn().mockResolvedValue({}) },
       rule: { findFirst: jest.fn() },
       agent: { findMany: jest.fn() },
       chat: { findMany: jest.fn() },
@@ -49,12 +52,14 @@ describe('PipelineService', () => {
       whatsAppConnection: { findFirst: jest.fn() },
     };
     aiService = { runRelevanceAgent: jest.fn(), runCleanAgent: jest.fn(), runRouteAgent: jest.fn() };
+    imageEditService = { runImageEditAgent: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PipelineService,
         { provide: PrismaService, useValue: prisma },
         { provide: AiService, useValue: aiService },
+        { provide: ImageEditService, useValue: imageEditService },
       ],
     }).compile();
 
@@ -391,6 +396,46 @@ describe('PipelineService', () => {
           body: 'Software engineer role at Acme',
         }),
       }),
+    );
+  });
+
+  it('runs clean before relevance when pipeline order is reversed', async () => {
+    prisma.message.findUnique.mockResolvedValue({
+      ...baseMessage,
+      body: 'Forwarded from Jobs Channel\n\nSoftware engineer role at Acme',
+    });
+    prisma.rule.findFirst.mockResolvedValue({
+      id: ruleId,
+      name: 'Jobs rule',
+      description: null,
+      pipelineAgentIds: ['agent-clean', 'agent-rel'],
+      destinationChatIds: ['dest-chat-1'],
+    });
+    prisma.agent.findMany.mockResolvedValue([
+      { id: 'agent-clean', name: 'Cleaner', type: 'clean', isActive: true },
+      { id: 'agent-rel', name: 'Relevance', type: 'relevance', isActive: true },
+    ]);
+    aiService.runCleanAgent.mockResolvedValue({
+      cleanedText: 'Software engineer role at Acme',
+      changes: ['Removed forwarding header'],
+      unchanged: false,
+    });
+    aiService.runRelevanceAgent.mockResolvedValue({
+      relevant: true,
+      reason: 'Job posting',
+      confidence: 0.9,
+    });
+
+    const result = await service.runForRule({
+      messageId,
+      ruleId,
+      orgId,
+      connectionId,
+    });
+
+    expect(result.action).toBe('forward');
+    expect(aiService.runCleanAgent.mock.invocationCallOrder[0]).toBeLessThan(
+      aiService.runRelevanceAgent.mock.invocationCallOrder[0],
     );
   });
 

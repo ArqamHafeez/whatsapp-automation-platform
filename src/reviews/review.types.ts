@@ -12,6 +12,8 @@ export interface ReviewForwardPayload {
 
   mediaUrl: string | null;
 
+  originalMediaUrl?: string | null;
+
   destinationChatIds: string[];
 
   pipelineMode: PipelineMode;
@@ -63,6 +65,12 @@ export function parseReviewForwardPayload(raw: string): ReviewForwardPayload {
   const type = typeof data.type === 'string' ? data.type : 'text';
   const mediaUrl: string | null =
     typeof data.mediaUrl === 'string' ? data.mediaUrl : data.mediaUrl === null ? null : null;
+  const originalMediaUrl: string | null =
+    typeof data.originalMediaUrl === 'string'
+      ? data.originalMediaUrl
+      : data.originalMediaUrl === null
+        ? null
+        : null;
 
   const pipelineMode =
 
@@ -101,6 +109,8 @@ export function parseReviewForwardPayload(raw: string): ReviewForwardPayload {
     type,
 
     mediaUrl,
+
+    originalMediaUrl,
 
     destinationChatIds,
 

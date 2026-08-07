@@ -80,6 +80,22 @@ export function pickStringArray(parsed: Record<string, unknown>, keys: string[])
   return [];
 }
 
+export function pickNumber(parsed: Record<string, unknown>, keys: string[]): number | undefined {
+  for (const key of keys) {
+    const value = parsed[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const num = Number(value);
+      if (Number.isFinite(num)) {
+        return num;
+      }
+    }
+  }
+  return undefined;
+}
+
 export function pickConfidence(parsed: Record<string, unknown>, fallback: number): number {
   const keys = ['confidence', 'score', 'certainty'];
   for (const key of keys) {
