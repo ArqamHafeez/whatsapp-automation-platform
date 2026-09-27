@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id                  String               @id @default(uuid())
+  name                String
+  slug                String               @unique
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  users               User[]
+  whatsappConnections WhatsAppConnection[]
+  rules               Rule[]
+  agents              Agent[]
+}
+
+enum UserRole {
+  admin
+  reviewer
+}
+
+model User {
+  id             String        @id @default(uuid())
+  email          String        @unique
+  name           String?
+  passwordHash   String
+  role           UserRole      @default(reviewer)
+  isAdmin        Boolean       @default(false)
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  sessions       Session[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+enum ChatType {
+  CHAT
+  GROUP
+  CHANNEL
+}
+
+model WhatsAppConnection {
+  id          String   @id @default(uuid())
+  orgId       String
+  org         Organization @relation(fields: [orgId], references: [id])
+  externalId  String?  @unique
+  name        String
+  status      String   @default("disconnected")
+  qrCodeUrl   String?
+  lastSeenAt  DateTime?
+  metadata    Json?
+  chats       Chat[]
+  rules       Rule[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([orgId, externalId])
+  @@map("whatsapp_connections")
+}
+
+model Chat {
+  id             String              @id @default(uuid())
+  connectionId   String
+  connection     WhatsAppConnection  @relation(fields: [connectionId], references: [id])
+  externalChatId String
+  type           ChatType
+  title          String?
+  description    String?
+  maxSendsPerHour Int?
+  maxSendsPerDay  Int?
+  isSource       Boolean             @default(false)
+  isDestination  Boolean             @default(false)
+  metadata       Json?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([connectionId, externalChatId])
+}
+
+model Rule {
+  id                  String   @id @default(uuid())
+  orgId               String
+  org                 Organization @relation(fields: [orgId], references: [id])
+  connectionId        String
+  connection          WhatsAppConnection @relation(fields: [connectionId], references: [id])
+  name                String
+  description         String?
+  reviewMode          String   @default("on_escalation")
+  reviewTimeoutMinutes Int    @default(1440)
+  isActive            Boolean  @default(true)
+  sourceChatIds       String[]
+  destinationChatIds  String[]
+  pipelineAgentIds    String[] @default([])
+  pipelineFailOpen    Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  sendLogs            SendLog[]
+  pipelineDecisions   PipelineDecision[]
+
+  @@index([connectionId])
+}
+
+enum AgentType {
+  relevance
+  clean
+  route
+  image_edit
+  custom
+}
+
+model Agent {
+  id                     String       @id @default(uuid())
+  orgId                  String
+  org                    Organization @relation(fields: [orgId], references: [id])
+  name                   String
+  description            String?
+  type                   AgentType
+  systemPrompt           String?
+  userPromptTemplate     String?
+  model                  String?
+  structuredConfig       Json?
+  advancedPromptOverride String?
+  isActive               Boolean      @default(true)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  @@index([orgId])
+  @@index([orgId, type])
+}
+
+enum MessageType {
+  text
+  image
+  document
+  video
+  audio
+  unknown
+}
+
+enum SendStatus {
+  pending
+  sent
+  failed
+  forwarded_on_pipeline_error
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  waMessageId String
+  connectionId String
+  chatId      String
+  sender      String
+  body        String?
+  type        MessageType @default(text)
+  mediaUrl    String?
+  metadata    Json?
+  receivedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  sendLogs    SendLog[]
+
+  @@unique([waMessageId, connectionId])
+  @@index([chatId, connectionId])
+  @@index([receivedAt])
+}
+
+model SendLog {
+  id                String     @id @default(uuid())
+  messageId         String
+  message           Message    @relation(fields: [messageId], references: [id])
+  sourceMessageId   String
+  destinationChatId String
+  ruleId            String?
+  rule              Rule?      @relation(fields: [ruleId], references: [id])
+  status            SendStatus @default(pending)
+  attempts          Int        @default(0)
+  lastAttemptAt     DateTime?
+  nextAttemptAt     DateTime?
+  errorDetails      String?
+  sentAt            DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@unique([messageId, destinationChatId])
+  @@index([status, nextAttemptAt])
+  @@index([destinationChatId, status, sentAt])
+}
+
+model PipelineDecision {
+  id           String   @id @default(uuid())
+  messageId    String
+  ruleId       String
+  rule         Rule     @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  decisionType String
+  destinations String[]
+  body         String?
+  mediaUrl     String?
+  reviewReason String?
+  status       String
+  pipelineMode String?
+  stepLogs     Json?
+  errorDetails String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([messageId])
+  @@index([ruleId])
+  @@index([messageId, ruleId])
+}
+
+model ReviewItem {
+  id              String        @id @default(uuid())
+  messageId       String
+  ruleId          String
+  status          String        @default("pending")
+  createdAt       DateTime      @default(now())
+  expiresAt       DateTime
+  originalPayload String
+  reviewNotes     String?
+  reviewerId      String?
+  updatedAt       DateTime      @updatedAt
+}

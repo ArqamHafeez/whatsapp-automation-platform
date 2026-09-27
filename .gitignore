@@ -1,0 +1,16 @@
+node_modules
+
+dist
+
+.env
+.env.*
+!.env.example
+docker/.env.production
+
+deploy-bundle.tgz
+*.tgz
+
+server credentials.txt
+package.json.backup
+tmp-auth-check.js
+test-auth-standalone.js

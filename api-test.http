@@ -1,0 +1,222 @@
+### ─── AUTH ───
+
+POST http://localhost:3000/auth/login
+
+Content-Type: application/json
+
+
+
+{
+
+  "email": "admin@demo.com",
+
+  "password": "admin123"
+
+}
+
+
+
+### ─── WEBHOOK: text ───
+
+POST http://localhost:3000/webhook/waha
+
+Content-Type: application/json
+
+
+
+{
+
+  "event": "message",
+
+  "session": "default",
+
+  "payload": {
+
+    "id": "test-text-001",
+
+    "from": "120363012345678901@g.us",
+
+    "fromMe": false,
+
+    "body": "Hello! Plain text forward test.",
+
+    "hasMedia": false,
+
+    "pushName": "Test Sender"
+
+  }
+
+}
+
+
+
+### ─── WEBHOOK: image (WAHA media URL) ───
+
+POST http://localhost:3000/webhook/waha
+
+Content-Type: application/json
+
+
+
+{
+
+  "event": "message",
+
+  "session": "default",
+
+  "payload": {
+
+    "id": "test-image-001",
+
+    "from": "120363012345678901@g.us",
+
+    "fromMe": false,
+
+    "body": "Image forward test",
+
+    "hasMedia": true,
+
+    "pushName": "Test Sender",
+
+    "media": {
+
+      "mimetype": "image/png",
+
+      "url": "http://127.0.0.1:8081/api/files/test-image.png"
+
+    }
+
+  }
+
+}
+
+
+
+### ─── WEBHOOK: video ───
+
+POST http://localhost:3000/webhook/waha
+
+Content-Type: application/json
+
+
+
+{
+
+  "event": "message",
+
+  "session": "default",
+
+  "payload": {
+
+    "id": "test-video-001",
+
+    "from": "120363012345678901@g.us",
+
+    "fromMe": false,
+
+    "body": "Video forward test",
+
+    "hasMedia": true,
+
+    "pushName": "Test Sender",
+
+    "media": {
+
+      "mimetype": "video/mp4",
+
+      "url": "http://127.0.0.1:8081/api/files/test-video.mp4"
+
+    }
+
+  }
+
+}
+
+
+
+### ─── DELIVERY LOG (after login, set Bearer token) ───
+
+GET http://localhost:3000/delivery/logs
+
+Authorization: Bearer REPLACE_ME
+
+
+
+### ─── AGENTS (after login) ───
+
+GET http://localhost:3000/agents
+
+Authorization: Bearer REPLACE_ME
+
+
+
+POST http://localhost:3000/agents
+
+Authorization: Bearer REPLACE_ME
+
+Content-Type: application/json
+
+{
+  "name": "Branding cleaner",
+  "type": "clean",
+  "description": "Remove forwarding headers and competitor branding from text",
+  "systemPrompt": "Clean WhatsApp message text for reposting. Remove forwarding boilerplate and channel promos.",
+  "userPromptTemplate": "Original:\n{{body}}"
+}
+
+POST http://localhost:3000/agents
+
+Authorization: Bearer REPLACE_ME
+
+Content-Type: application/json
+
+{
+  "name": "Destination router",
+  "type": "route",
+  "description": "Pick the best destination group(s) for each job posting",
+  "systemPrompt": "Route WhatsApp job posts to the best destination chat(s). Use only allowed chatId values from the prompt.",
+  "userPromptTemplate": "Message:\n{{body}}"
+}
+
+### ─── PIPELINE DECISIONS ───
+
+GET http://localhost:3000/pipeline/decisions/MESSAGE_UUID_HERE
+
+Authorization: Bearer REPLACE_ME
+
+
+
+### ─── REVIEWS ───
+
+GET http://localhost:3000/reviews?status=pending
+
+Authorization: Bearer REPLACE_ME
+
+
+
+POST http://localhost:3000/reviews/REVIEW_UUID_HERE/approve
+
+Authorization: Bearer REPLACE_ME
+
+Content-Type: application/json
+
+{
+  "reviewNotes": "Looks good"
+}
+
+
+
+POST http://localhost:3000/reviews/REVIEW_UUID_HERE/reject
+
+Authorization: Bearer REPLACE_ME
+
+Content-Type: application/json
+
+{
+  "reviewNotes": "Off-topic"
+}
+
+### ─── AI MOCK WEBHOOK TEST ───
+# Set AI_PROVIDER=mock in .env (AI_MOCK_RELEVANT=false to test skip path)
+# Attach relevance agent to rule pipelineAgentIds, then POST webhook below.
+
