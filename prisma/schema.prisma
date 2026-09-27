@@ -19,17 +19,23 @@ model Organization {
   agents              Agent[]
 }
 
+<<<<<<< HEAD
 enum UserRole {
   admin
   reviewer
 }
 
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 model User {
   id             String        @id @default(uuid())
   email          String        @unique
   name           String?
   passwordHash   String
+<<<<<<< HEAD
   role           UserRole      @default(reviewer)
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   isAdmin        Boolean       @default(false)
   organizationId String
   organization   Organization  @relation(fields: [organizationId], references: [id])
@@ -80,8 +86,11 @@ model Chat {
   type           ChatType
   title          String?
   description    String?
+<<<<<<< HEAD
   maxSendsPerHour Int?
   maxSendsPerDay  Int?
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   isSource       Boolean             @default(false)
   isDestination  Boolean             @default(false)
   metadata       Json?
@@ -118,7 +127,10 @@ enum AgentType {
   relevance
   clean
   route
+<<<<<<< HEAD
   image_edit
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   custom
 }
 
@@ -197,7 +209,10 @@ model SendLog {
 
   @@unique([messageId, destinationChatId])
   @@index([status, nextAttemptAt])
+<<<<<<< HEAD
   @@index([destinationChatId, status, sentAt])
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 }
 
 model PipelineDecision {

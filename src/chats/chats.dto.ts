@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 import { Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+=======
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
 export class UpdateChatDto {
   @IsOptional()
@@ -14,6 +18,7 @@ export class UpdateChatDto {
   @IsString()
   @MaxLength(500)
   description?: string;
+<<<<<<< HEAD
 
   /** Omit or set null to clear the hourly cap. */
   @IsOptional()
@@ -32,4 +37,6 @@ export class UpdateChatDto {
   @Max(100_000)
   @Type(() => Number)
   maxSendsPerDay?: number | null;
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 }

@@ -160,11 +160,14 @@ export class InboundMessageService {
         instance.orgId,
         instance.id,
       );
+<<<<<<< HEAD
         if (!destinationJids.length) {
           this.logger.warn(
             `No deliverable destinations resolved rule=${rule.id} message=${message.id}`,
           );
         }
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
       for (const destChatJid of destinationJids) {
         await this.delivery.enqueueDelivery({
           messageId: message.id,

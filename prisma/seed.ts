@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 import { PrismaClient, UserRole } from '@prisma/client';
+=======
+import { PrismaClient } from '@prisma/client';
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+<<<<<<< HEAD
 async function upsertUser(opts: {
   email: string;
   name: string;
@@ -46,10 +51,18 @@ async function main() {
     where: { slug: 'demo' },
     update: {},
     create: {
+=======
+async function main() {
+  console.log('🌱 Seeding database...');
+
+  const org = await prisma.organization.create({
+    data: {
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
       name: 'Demo Organization',
       slug: 'demo',
     },
   });
+<<<<<<< HEAD
 
   await upsertUser({
     email: 'admin@demo.com',
@@ -70,6 +83,23 @@ async function main() {
   console.log('\n🎉 Seed complete!');
   console.log('Admin:    admin@demo.com / admin123');
   console.log('Reviewer: reviewer@demo.com / reviewer123');
+=======
+  console.log('✅ Organization created:', org.id);
+
+  const passwordHash = await bcrypt.hash('admin123', 10);
+  const user = await prisma.user.create({
+    data: {
+      email: 'admin@demo.com',
+      name: 'Admin User',
+      passwordHash,
+      isAdmin: true,
+      organizationId: org.id,
+    },
+  });
+  console.log('✅ Admin user created:', user.email);
+
+  console.log('\n🎉 Seed complete! Login with: admin@demo.com / admin123');
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 }
 
 main()

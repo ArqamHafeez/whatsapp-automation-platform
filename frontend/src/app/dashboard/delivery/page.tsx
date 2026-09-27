@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+<<<<<<< HEAD
 import { useAuth } from '@/context/AuthContext';
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 import { fetchApi } from '@/lib/api';
 import { RefreshCw, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -37,11 +40,14 @@ function renderStepSummary(step: PipelineStepLog): string | null {
   if (step.agentType === 'route' && Array.isArray(output.destinationChatIds)) {
     return `Routed to ${output.destinationChatIds.length} destination(s): ${output.reason || ''}`.trim();
   }
+<<<<<<< HEAD
   if (step.agentType === 'image_edit' && typeof output.edited === 'boolean') {
     return output.edited
       ? `Image edited (${output.method || 'local'}): ${(output.regionsRemoved as string[] | undefined)?.join(', ') || output.reason || ''}`
       : String(output.reason || 'Image edit skipped');
   }
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   if (step.agentType === 'relevance' && typeof output.relevant === 'boolean') {
     return output.relevant
       ? `Relevant: ${output.reason || 'yes'}`
@@ -59,7 +65,10 @@ interface SendLog {
   attempts: number;
   destinationChatId: string;
   errorDetails?: string | null;
+<<<<<<< HEAD
   nextAttemptAt?: string | null;
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   sentAt?: string | null;
   createdAt: string;
   message?: { body?: string | null; type?: string; chatId?: string; sender?: string };
@@ -85,7 +94,10 @@ interface InboundMessage {
 }
 
 export default function DeliveryPage() {
+<<<<<<< HEAD
   const { isAdmin } = useAuth();
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   const [logs, setLogs] = useState<SendLog[]>([]);
   const [inbound, setInbound] = useState<InboundMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -218,6 +230,7 @@ export default function DeliveryPage() {
                       </td>
                       <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
                         {msg.forwardCount === 0 ? (
+<<<<<<< HEAD
                           (() => {
                             const decision = msg.pipelineDecisions?.[0];
                             if (decision?.decisionType === 'skip') {
@@ -231,6 +244,9 @@ export default function DeliveryPage() {
                             }
                             return <span style={{ color: 'var(--accent)' }}>0 — no delivery decision</span>;
                           })()
+=======
+                          <span style={{ color: 'var(--accent)' }}>0 — held/skipped/review</span>
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
                         ) : (
                           msg.sendLogs.map((s) => `${s.rule?.name || 'rule'}: ${s.status}`).join(', ')
                         )}
@@ -354,6 +370,7 @@ export default function DeliveryPage() {
                       {log.errorDetails ? (
                         <div style={{ fontSize: '0.7rem', color: 'var(--accent)', marginTop: '0.25rem' }}>{log.errorDetails.slice(0, 120)}</div>
                       ) : null}
+<<<<<<< HEAD
                       {log.status === 'pending' && log.nextAttemptAt ? (
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                           Queued until {new Date(log.nextAttemptAt).toLocaleString()}
@@ -363,6 +380,12 @@ export default function DeliveryPage() {
                     <td style={{ padding: '0.75rem' }}>{log.attempts}</td>
                     <td style={{ padding: '0.75rem' }}>
                       {isAdmin && (log.status === 'failed' || log.status === 'pending') && (
+=======
+                    </td>
+                    <td style={{ padding: '0.75rem' }}>{log.attempts}</td>
+                    <td style={{ padding: '0.75rem' }}>
+                      {(log.status === 'failed' || log.status === 'pending') && (
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
                         <button
                           type="button"
                           className="btn-secondary"

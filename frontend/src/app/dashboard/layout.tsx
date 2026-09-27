@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { RuleDraftProvider, useRuleDraft } from '@/context/RuleDraftContext';
+<<<<<<< HEAD
 import { NAV_ITEMS } from '@/lib/rbac';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -20,17 +21,36 @@ const iconByHref: Record<string, React.ComponentType<{ size?: number }>> = {
   '/dashboard/users': Users,
 };
 
+=======
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Smartphone, MessageSquare, Route, LogOut, User as UserIcon, Activity, Truck, ClipboardCheck, Bot } from 'lucide-react';
+import React from 'react';
+
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const { isDraftActive } = useRuleDraft();
 
+<<<<<<< HEAD
   const navItems = NAV_ITEMS.filter((item) => user && item.roles.includes(user.role)).map((item) => ({
     ...item,
     icon: iconByHref[item.href] ?? Activity,
   }));
 
   const contentMaxWidth = pathname.startsWith('/dashboard/analytics') ? '1200px' : '1000px';
+=======
+  const navItems = [
+    { name: 'Dashboard', href: '/dashboard', icon: Activity },
+    { name: 'Connections', href: '/dashboard/connections', icon: Smartphone },
+    { name: 'Chats & Groups', href: '/dashboard/chats', icon: MessageSquare },
+    { name: 'Forwarding Rules', href: '/dashboard/rules', icon: Route, showDraftHint: true },
+    { name: 'AI Agents', href: '/dashboard/agents', icon: Bot },
+    { name: 'Review Queue', href: '/dashboard/reviews', icon: ClipboardCheck },
+    { name: 'Delivery Log', href: '/dashboard/delivery', icon: Truck },
+  ];
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
   return (
     <div className="page-container">
@@ -140,11 +160,17 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
             <div style={{ overflow: 'hidden' }}>
               <div style={{ fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+<<<<<<< HEAD
                 {user?.email || 'User'}
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {user?.role === 'admin' ? 'Admin' : 'Reviewer'}
               </div>
+=======
+                {user?.email || 'Admin'}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Workspace</div>
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
             </div>
           </div>
 
@@ -170,7 +196,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="main-content">
+<<<<<<< HEAD
         <div style={{ maxWidth: contentMaxWidth, margin: '0 auto' }}>{children}</div>
+=======
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>{children}</div>
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
       </main>
     </div>
   );

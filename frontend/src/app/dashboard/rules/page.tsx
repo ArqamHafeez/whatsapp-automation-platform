@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchApi } from '@/lib/api';
 import { formatChatDisplayLabel, chatMatchesSearch } from '@/lib/chat-display';
 import { useRuleDraft } from '@/context/RuleDraftContext';
+<<<<<<< HEAD
 import { Plus, RefreshCw, Trash2, Edit2, Play, Pause, Save, X, Search, FlaskConical, ChevronUp, ChevronDown } from 'lucide-react';
 import {
   describePipelineOrder,
@@ -11,6 +12,21 @@ import {
   getPipelineWarnings,
   movePipelineAgentId,
 } from '@/lib/pipeline-order';
+=======
+import { Plus, RefreshCw, Trash2, Edit2, Play, Pause, Save, X, Search, FlaskConical } from 'lucide-react';
+
+const PIPELINE_TYPE_ORDER = ['relevance', 'clean', 'route'] as const;
+
+function sortPipelineAgentIds(ids: string[], agents: PipelineAgent[]): string[] {
+  const byId = new Map(agents.map((a) => [a.id, a]));
+  return [...ids].sort((a, b) => {
+    const ta = byId.get(a)?.type ?? '';
+    const tb = byId.get(b)?.type ?? '';
+    return PIPELINE_TYPE_ORDER.indexOf(ta as typeof PIPELINE_TYPE_ORDER[number]) -
+      PIPELINE_TYPE_ORDER.indexOf(tb as typeof PIPELINE_TYPE_ORDER[number]);
+  });
+}
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
 interface Rule {
   id: string;
@@ -243,11 +259,16 @@ export default function RulesPage() {
       if (ids.includes(agentId)) return prev;
       return {
         ...prev,
+<<<<<<< HEAD
         pipelineAgentIds: [...ids, agentId],
+=======
+        pipelineAgentIds: sortPipelineAgentIds([...ids, agentId], pipelineAgents),
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
       };
     });
   };
 
+<<<<<<< HEAD
   const movePipelineAgent = (index: number, direction: 'up' | 'down') => {
     setFormData((prev) => ({
       ...prev,
@@ -257,6 +278,8 @@ export default function RulesPage() {
 
   const pipelineWarnings = getPipelineWarnings(formData.pipelineAgentIds || [], pipelineAgents);
 
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   const removePipelineAgent = (agentId: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -727,6 +750,7 @@ export default function RulesPage() {
             <div>
               <label className="label">AI Pipeline (optional)</label>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+<<<<<<< HEAD
                 Agents run top to bottom in the order you set. Leave empty to forward directly after matching.
               </p>
               {pipelineWarnings.length > 0 ? (
@@ -746,13 +770,22 @@ export default function RulesPage() {
                   ))}
                 </div>
               ) : null}
+=======
+                Fixed v1 order: relevance → clean → route (auto-sorted on save). Leave empty to forward directly after matching.
+              </p>
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
               {(formData.pipelineAgentIds || []).length === 0 ? (
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No agents in pipeline (passthrough)</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+<<<<<<< HEAD
                   {(formData.pipelineAgentIds || []).map((agentId, index) => {
                     const agent = pipelineAgents.find((a) => a.id === agentId);
                     const ids = formData.pipelineAgentIds || [];
+=======
+                  {sortPipelineAgentIds(formData.pipelineAgentIds || [], pipelineAgents).map((agentId, index) => {
+                    const agent = pipelineAgents.find((a) => a.id === agentId);
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
                     return (
                       <div
                         key={agentId}
@@ -770,6 +803,7 @@ export default function RulesPage() {
                         </span>
                         <span style={{ flex: 1, fontSize: '0.875rem' }}>
                           {agent?.name || agentId}{' '}
+<<<<<<< HEAD
                           <span style={{ color: 'var(--text-muted)' }}>
                             ({formatPipelineTypeLabel(agent?.type || 'unknown')})
                           </span>
@@ -805,6 +839,13 @@ export default function RulesPage() {
                             <X size={14} />
                           </button>
                         </div>
+=======
+                          <span style={{ color: 'var(--text-muted)' }}>({agent?.type || 'unknown'})</span>
+                        </span>
+                        <button type="button" className="btn-secondary" style={{ padding: '0.25rem', color: 'var(--accent)' }} onClick={() => removePipelineAgent(agentId)}>
+                          <X size={14} />
+                        </button>
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
                       </div>
                     );
                   })}
@@ -939,9 +980,13 @@ export default function RulesPage() {
                   </h3>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', minHeight: '1.5rem' }}>{rule.description}</p>
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+<<<<<<< HEAD
                     Review: {rule.reviewMode.replace('_', ' ')} · Pipeline:{' '}
                     {describePipelineOrder(rule.pipelineAgentIds || [], pipelineAgents) ||
                       `${rule.pipelineAgentIds?.length || 0} agent(s)`}
+=======
+                    Review: {rule.reviewMode.replace('_', ' ')} · Pipeline: {rule.pipelineAgentIds?.length || 0} agent(s)
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
                   </p>
                 </div>
               </div>

@@ -18,6 +18,7 @@ interface Chat {
   type: string;
   externalChatId?: string;
   description?: string | null;
+<<<<<<< HEAD
   maxSendsPerHour?: number | null;
   maxSendsPerDay?: number | null;
 }
@@ -40,6 +41,8 @@ function parseCapInput(raw: string): number | null {
     throw new Error('Caps must be whole numbers of 1 or greater, or empty to clear');
   }
   return n;
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 }
 
 export default function ChatsPage() {
@@ -52,9 +55,12 @@ export default function ChatsPage() {
   const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
   const [descriptionDraft, setDescriptionDraft] = useState('');
   const [savingDescriptionId, setSavingDescriptionId] = useState<string | null>(null);
+<<<<<<< HEAD
   const [editingCapsId, setEditingCapsId] = useState<string | null>(null);
   const [capsDraft, setCapsDraft] = useState<CapDraft>({ maxSendsPerHour: '', maxSendsPerDay: '' });
   const [savingCapsId, setSavingCapsId] = useState<string | null>(null);
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
   useEffect(() => {
     loadConnections();
@@ -117,7 +123,10 @@ export default function ChatsPage() {
   const beginEditDescription = (chat: Chat) => {
     setEditingDescriptionId(chat.id);
     setDescriptionDraft(chat.description || '');
+<<<<<<< HEAD
     setEditingCapsId(null);
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   };
 
   const cancelEditDescription = () => {
@@ -145,6 +154,7 @@ export default function ChatsPage() {
     }
   };
 
+<<<<<<< HEAD
   const beginEditCaps = (chat: Chat) => {
     setEditingCapsId(chat.id);
     setCapsDraft({
@@ -181,6 +191,8 @@ export default function ChatsPage() {
     }
   };
 
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   const filteredChats = chats.filter((c) => chatMatchesSearch(c, search));
 
   return (
@@ -190,7 +202,11 @@ export default function ChatsPage() {
           <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Chats & Groups</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
             Sync and browse chats for each WhatsApp connection. Add destination descriptions to help route agents.
+<<<<<<< HEAD
             Set optional send caps per destination group. Choose sources and destinations per rule on{' '}
+=======
+            Choose sources and destinations per rule on{' '}
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
             <Link href="/dashboard/rules" style={{ color: 'var(--primary)' }}>
               Forwarding Rules
             </Link>
@@ -209,8 +225,12 @@ export default function ChatsPage() {
         }}
       >
         Destination descriptions are passed to route agents (e.g. &quot;Remote engineering roles only&quot;). Source
+<<<<<<< HEAD
         descriptions give relevance agents extra context. Send caps limit how many messages can be forwarded to a
         destination per hour or day — excess sends stay queued and retry automatically when the window opens.
+=======
+        descriptions give relevance agents extra context.
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
       </div>
 
       <div className="card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -271,7 +291,10 @@ export default function ChatsPage() {
                     <th style={{ padding: '1rem', fontWeight: 500 }}>Chat Name</th>
                     <th style={{ padding: '1rem', fontWeight: 500 }}>Type</th>
                     <th style={{ padding: '1rem', fontWeight: 500, minWidth: '280px' }}>Description (for AI routing)</th>
+<<<<<<< HEAD
                     <th style={{ padding: '1rem', fontWeight: 500, minWidth: '180px' }}>Send caps</th>
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
                   </tr>
                 </thead>
                 <tbody>
@@ -352,6 +375,7 @@ export default function ChatsPage() {
                           </button>
                         )}
                       </td>
+<<<<<<< HEAD
                       <td style={{ padding: '1rem' }}>
                         {editingCapsId === chat.id ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -418,11 +442,17 @@ export default function ChatsPage() {
                           </button>
                         )}
                       </td>
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
                     </tr>
                   ))}
                   {filteredChats.length === 0 && (
                     <tr>
+<<<<<<< HEAD
                       <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+=======
+                      <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
                         No chats found. Try syncing from device.
                       </td>
                     </tr>

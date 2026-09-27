@@ -4,21 +4,29 @@ import { Rule } from '@prisma/client';
 import { AgentsService } from '../agents/agents.service';
 import { DeliveryService } from '../delivery/delivery.service';
 import { PipelineService } from '../pipeline/pipeline.service';
+<<<<<<< HEAD
 import {
   chatJidAliases,
   collectInboundJidCandidates,
   findAllChatsByInboundJid,
   findChatByInboundJid,
 } from '../common/whatsapp/inbound-chat-jid';
+=======
+import { collectInboundJidCandidates, findAllChatsByInboundJid, findChatByInboundJid } from '../common/whatsapp/inbound-chat-jid';
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 import { normalizeWhatsAppJid } from '../common/whatsapp/jid-match';
 import { isDeliverableWhatsAppJid } from '../common/whatsapp/jid-deliverable';
 import { CreateRuleDto, UpdateRuleDto } from './rules.dto';
 import { SimulateRuleDto } from './rules.simulate.dto';
+<<<<<<< HEAD
 import {
   assertPipelineAgentIdsValid,
   getPipelineWarnings,
   resolvePipelineAgentIds,
 } from '../pipeline/pipeline-order';
+=======
+import { assertPipelineAgentIdsValid, normalizePipelineAgentIds } from '../pipeline/pipeline-order';
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
 @Injectable()
 export class RulesService {
@@ -97,6 +105,7 @@ export class RulesService {
     }
   }
 
+<<<<<<< HEAD
   private async resolveAndValidatePipeline(orgId: string, agentIds: string[]): Promise<string[]> {
     const resolvedIds = resolvePipelineAgentIds(agentIds);
     if (!resolvedIds.length) {
@@ -117,6 +126,23 @@ export class RulesService {
       this.logger.warn(`Pipeline configuration: ${warning}`);
     }
     return resolvedIds;
+=======
+  private async normalizeAndValidatePipeline(orgId: string, agentIds: string[]): Promise<string[]> {
+    if (!agentIds.length) {
+      return [];
+    }
+    await this.agentsService.assertAgentsInOrg(orgId, agentIds);
+    const agents = await this.prisma.agent.findMany({
+      where: { orgId, id: { in: agentIds } },
+      select: { id: true, type: true, isActive: true },
+    });
+    try {
+      assertPipelineAgentIdsValid(agentIds, agents);
+    } catch (err) {
+      throw new BadRequestException((err as Error).message);
+    }
+    return normalizePipelineAgentIds(agentIds, agents);
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   }
 
   async listRules(userId: string) {
@@ -137,7 +163,11 @@ export class RulesService {
       data.destinationChatIds,
     );
 
+<<<<<<< HEAD
     const pipelineAgentIds = await this.resolveAndValidatePipeline(orgId, data.pipelineAgentIds ?? []);
+=======
+    const pipelineAgentIds = await this.normalizeAndValidatePipeline(orgId, data.pipelineAgentIds ?? []);
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
     return this.prisma.rule.create({
       data: {
@@ -195,7 +225,11 @@ export class RulesService {
     if (data.reviewMode !== undefined) updateData.reviewMode = data.reviewMode;
     if (data.reviewTimeoutMinutes !== undefined) updateData.reviewTimeoutMinutes = data.reviewTimeoutMinutes;
     if (data.pipelineAgentIds !== undefined) {
+<<<<<<< HEAD
       updateData.pipelineAgentIds = await this.resolveAndValidatePipeline(orgId, nextPipelineAgentIds);
+=======
+      updateData.pipelineAgentIds = await this.normalizeAndValidatePipeline(orgId, nextPipelineAgentIds);
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
     }
 
     return this.prisma.rule.update({
@@ -359,6 +393,7 @@ export class RulesService {
         connectionId,
         connection: { orgId },
       },
+<<<<<<< HEAD
       select: { externalChatId: true, metadata: true },
     });
 
@@ -366,6 +401,14 @@ export class RulesService {
       const deliverable = chatJidAliases(chat).find((jid) => isDeliverableWhatsAppJid(jid));
       return deliverable ? [deliverable] : [];
     });
+=======
+      select: { externalChatId: true },
+    });
+
+    return chats
+      .map((c) => c.externalChatId)
+      .filter((jid) => isDeliverableWhatsAppJid(jid));
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   }
 
   async simulateRule(userId: string, ruleId: string, data: SimulateRuleDto) {

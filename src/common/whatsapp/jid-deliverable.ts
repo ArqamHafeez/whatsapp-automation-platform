@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 /** JIDs that WAHA can send to. LID chat IDs are valid WAHA destinations. */
+=======
+/** JIDs that WAHA can send to (exclude invalid / LID-only rows). */
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 export function isDeliverableWhatsAppJid(jid: string): boolean {
   const trimmed = jid?.trim();
   if (!trimmed || !trimmed.includes('@')) {
@@ -21,9 +25,12 @@ export function isDeliverableWhatsAppJid(jid: string): boolean {
   if (domain === 'g.us') {
     return user.length >= 8;
   }
+<<<<<<< HEAD
   if (domain === 'lid') {
     return /^\d{6,20}$/.test(user);
   }
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   if (domain === 'newsletter') {
     return user.length >= 8;
   }

@@ -26,6 +26,7 @@ export type RouteStructuredConfig = {
   fallbackBehavior?: string;
 };
 
+<<<<<<< HEAD
 export type ImageEditStructuredConfig = {
   removePrompt?: string;
   onlyWhenWatermarkDetected?: string;
@@ -39,6 +40,12 @@ export type AgentStructuredConfig =
   | CleanStructuredConfig
   | RouteStructuredConfig
   | ImageEditStructuredConfig;
+=======
+export type AgentStructuredConfig =
+  | RelevanceStructuredConfig
+  | CleanStructuredConfig
+  | RouteStructuredConfig;
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
 const RELEVANCE_KEYS: (keyof RelevanceStructuredConfig)[] = [
   'inclusionCriteria',
@@ -66,6 +73,7 @@ const ROUTE_KEYS: (keyof RouteStructuredConfig)[] = [
   'fallbackBehavior',
 ];
 
+<<<<<<< HEAD
 const IMAGE_EDIT_KEYS: (keyof ImageEditStructuredConfig)[] = [
   'removePrompt',
   'onlyWhenWatermarkDetected',
@@ -74,6 +82,8 @@ const IMAGE_EDIT_KEYS: (keyof ImageEditStructuredConfig)[] = [
   'minConfidence',
 ];
 
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 function pickStringFields(
   raw: Record<string, unknown>,
   keys: readonly string[],
@@ -101,8 +111,11 @@ export function sanitizeStructuredConfig(
     keys = CLEAN_KEYS;
   } else if (type === 'route') {
     keys = ROUTE_KEYS;
+<<<<<<< HEAD
   } else if (type === 'image_edit') {
     keys = IMAGE_EDIT_KEYS;
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   } else {
     keys = RELEVANCE_KEYS;
   }
@@ -131,6 +144,7 @@ export function readRouteStructuredConfig(agent: Agent): RouteStructuredConfig {
   return pickStringFields(agent.structuredConfig as Record<string, unknown>, ROUTE_KEYS);
 }
 
+<<<<<<< HEAD
 export function readImageEditStructuredConfig(agent: Agent): ImageEditStructuredConfig {
   if (!agent.structuredConfig || typeof agent.structuredConfig !== 'object') {
     return {};
@@ -138,6 +152,8 @@ export function readImageEditStructuredConfig(agent: Agent): ImageEditStructured
   return pickStringFields(agent.structuredConfig as Record<string, unknown>, IMAGE_EDIT_KEYS);
 }
 
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 function buildRelevancePromptBlock(config: RelevanceStructuredConfig): string {
   const lines: string[] = [];
   if (config.inclusionCriteria) lines.push(`Forward when: ${config.inclusionCriteria}`);
@@ -182,6 +198,7 @@ function buildRoutePromptBlock(config: RouteStructuredConfig): string {
   return lines.length ? `\n\nStructured routing policy:\n${lines.join('\n\n')}` : '';
 }
 
+<<<<<<< HEAD
 function buildImageEditPromptBlock(config: ImageEditStructuredConfig): string {
   const lines: string[] = [];
   if (config.removePrompt) lines.push(`Removal goal: ${config.removePrompt}`);
@@ -192,6 +209,8 @@ function buildImageEditPromptBlock(config: ImageEditStructuredConfig): string {
   return lines.length ? `\n\nStructured image edit policy:\n${lines.join('\n')}` : '';
 }
 
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 /** @deprecated use readRelevanceStructuredConfig — kept for callers expecting generic read */
 export function readStructuredConfig(agent: Agent): RelevanceStructuredConfig {
   return readRelevanceStructuredConfig(agent);
@@ -204,8 +223,11 @@ export function buildStructuredConfigPromptBlock(agent: Agent): string {
   if (agent.type === 'route') {
     return buildRoutePromptBlock(readRouteStructuredConfig(agent));
   }
+<<<<<<< HEAD
   if (agent.type === 'image_edit') {
     return buildImageEditPromptBlock(readImageEditStructuredConfig(agent));
   }
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   return buildRelevancePromptBlock(readRelevanceStructuredConfig(agent));
 }

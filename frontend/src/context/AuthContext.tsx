@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getApiBaseUrl } from '@/lib/api';
+<<<<<<< HEAD
 import { canAccessPath, defaultDashboardPath, type UserRole } from '@/lib/rbac';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -11,6 +12,13 @@ export interface User {
   name?: string | null;
   role: UserRole;
   isAdmin?: boolean;
+=======
+import { useRouter, usePathname } from 'next/navigation';
+
+interface User {
+  id: string;
+  email: string;
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   organizationId: string;
 }
 
@@ -21,11 +29,15 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
+<<<<<<< HEAD
   isAdmin: boolean;
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+<<<<<<< HEAD
 function normalizeUser(raw: Partial<User> & { id: string; email: string; organizationId: string }): User {
   const role: UserRole = raw.role === 'reviewer' ? 'reviewer' : 'admin';
   return {
@@ -38,6 +50,8 @@ function normalizeUser(raw: Partial<User> & { id: string; email: string; organiz
   };
 }
 
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -63,9 +77,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return res.json();
       })
       .then((data) => {
+<<<<<<< HEAD
         const nextUser = normalizeUser(data.user);
         setUser(nextUser);
         localStorage.setItem('user', JSON.stringify(nextUser));
+=======
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
       })
       .catch(() => {
         localStorage.removeItem('token');
@@ -77,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+<<<<<<< HEAD
     if (isLoading) {
       return;
     }
@@ -103,6 +123,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(normalized));
     router.push(defaultDashboardPath(normalized.role));
+=======
+    if (!isLoading) {
+      if (!token && !pathname.startsWith('/login')) {
+        router.push('/login');
+      } else if (token && pathname === '/login') {
+        router.push('/dashboard');
+      }
+    }
+  }, [token, isLoading, pathname, router]);
+
+  const login = (newToken: string, newUser: User) => {
+    setToken(newToken);
+    setUser(newUser);
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(newUser));
+    router.push('/dashboard');
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   };
 
   const logout = () => {
@@ -114,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
+<<<<<<< HEAD
     <AuthContext.Provider
       value={{
         user,
@@ -125,6 +163,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: user?.role === 'admin',
       }}
     >
+=======
+    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token, isLoading }}>
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
       {children}
     </AuthContext.Provider>
   );

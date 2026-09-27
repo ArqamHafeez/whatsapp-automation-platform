@@ -80,6 +80,7 @@ export function pickStringArray(parsed: Record<string, unknown>, keys: string[])
   return [];
 }
 
+<<<<<<< HEAD
 export function pickNumber(parsed: Record<string, unknown>, keys: string[]): number | undefined {
   for (const key of keys) {
     const value = parsed[key];
@@ -96,6 +97,8 @@ export function pickNumber(parsed: Record<string, unknown>, keys: string[]): num
   return undefined;
 }
 
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 export function pickConfidence(parsed: Record<string, unknown>, fallback: number): number {
   const keys = ['confidence', 'score', 'certainty'];
   for (const key of keys) {

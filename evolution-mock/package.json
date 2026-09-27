@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "name": "evolution-api-mock",
   "version": "1.0.0",
@@ -12,3 +13,19 @@
     "uuid": "^9.0.0"
   }
 }
+=======
+{
+  "name": "evolution-api-mock",
+  "version": "1.0.0",
+  "description": "Mock Evolution API server for local development",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "uuid": "^9.0.0"
+  }
+}
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a

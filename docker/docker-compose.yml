@@ -12,8 +12,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+<<<<<<< HEAD
     ports:
       - '5433:5432'
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
     restart: unless-stopped
 
   waha:
@@ -21,8 +24,11 @@ services:
     environment:
       WAHA_API_KEY: ${WAHA_API_KEY}
       WHATSAPP_API_PORT: 3000
+<<<<<<< HEAD
     ports:
     - "8081:3000"  
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
     volumes:
       - waha_data:/app/.sessions
     restart: unless-stopped

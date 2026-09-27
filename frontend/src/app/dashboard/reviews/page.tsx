@@ -14,9 +14,12 @@ interface ReviewItem {
     body?: string | null;
     reviewReason?: string;
     destinationChatIds?: string[];
+<<<<<<< HEAD
     mediaUrl?: string | null;
     originalMediaUrl?: string | null;
     type?: string;
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   };
   message?: {
     body?: string | null;
@@ -163,6 +166,7 @@ export default function ReviewsPage() {
                   {item.payload?.body || item.message?.body || '(no text)'}
                 </div>
 
+<<<<<<< HEAD
                 {(item.payload?.originalMediaUrl || item.payload?.mediaUrl) &&
                 (item.payload?.type === 'image' || item.message?.type === 'image') ? (
                   <div
@@ -202,6 +206,8 @@ export default function ReviewsPage() {
                   </div>
                 ) : null}
 
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                   From {item.message?.sender || 'unknown'} · Expires {new Date(item.expiresAt).toLocaleString()}
                 </div>

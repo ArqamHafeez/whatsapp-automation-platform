@@ -1,5 +1,6 @@
 import { AgentType } from '@prisma/client';
 
+<<<<<<< HEAD
 /** Agent types that can appear in a rule pipeline (execution order is user-defined). */
 export const SUPPORTED_PIPELINE_AGENT_TYPES: AgentType[] = [
   'relevance',
@@ -22,6 +23,28 @@ export function resolvePipelineAgentIds(agentIds: string[]): string[] {
     resolved.push(id);
   }
   return resolved;
+=======
+/** v1 fixed pipeline order per specification §3.1 */
+export const V1_PIPELINE_AGENT_TYPES: AgentType[] = ['relevance', 'clean', 'route'];
+
+export function normalizePipelineAgentIds(
+  agentIds: string[],
+  agents: Array<{ id: string; type: AgentType }>,
+): string[] {
+  const byId = new Map(agents.map((agent) => [agent.id, agent]));
+  const selected = agentIds.filter((id) => byId.has(id));
+  const ordered: string[] = [];
+
+  for (const type of V1_PIPELINE_AGENT_TYPES) {
+    for (const id of selected) {
+      if (byId.get(id)?.type === type) {
+        ordered.push(id);
+      }
+    }
+  }
+
+  return ordered;
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 }
 
 export function assertPipelineAgentIdsValid(
@@ -37,8 +60,13 @@ export function assertPipelineAgentIdsValid(
     if (!agent.isActive) {
       throw new Error(`Pipeline agent ${agent.id} is inactive`);
     }
+<<<<<<< HEAD
     if (!SUPPORTED_PIPELINE_AGENT_TYPES.includes(agent.type)) {
       throw new Error(`Pipeline agent type "${agent.type}" is not supported in the pipeline`);
+=======
+    if (!V1_PIPELINE_AGENT_TYPES.includes(agent.type)) {
+      throw new Error(`Pipeline agent type "${agent.type}" is not supported in v1`);
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
     }
   }
 
@@ -49,6 +77,7 @@ export function assertPipelineAgentIdsValid(
   }
   for (const [type, count] of typeCounts) {
     if (count > 1) {
+<<<<<<< HEAD
       throw new Error(`Only one agent of type "${type}" is allowed per pipeline`);
     }
   }
@@ -95,3 +124,9 @@ export function normalizePipelineAgentIds(
   void agents;
   return resolvePipelineAgentIds(agentIds);
 }
+=======
+      throw new Error(`Only one agent of type "${type}" is allowed per pipeline in v1`);
+    }
+  }
+}
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a

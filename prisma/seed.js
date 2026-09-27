@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 
 const prisma = new PrismaClient();
 
+<<<<<<< HEAD
 async function upsertUser({ email, name, password, role, orgId }) {
   const passwordHash = await bcrypt.hash(password, 10);
   let user = await prisma.user.findUnique({ where: { email } });
@@ -37,6 +38,12 @@ async function upsertUser({ email, name, password, role, orgId }) {
 async function main() {
   console.log('🌱 Seeding database...');
 
+=======
+async function main() {
+  console.log('🌱 Seeding database...');
+
+  // Check if org exists
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   let org = await prisma.organization.findUnique({
     where: { slug: 'demo' },
   });
@@ -53,6 +60,7 @@ async function main() {
     console.log('ℹ️ Organization already exists:', org.id);
   }
 
+<<<<<<< HEAD
   await upsertUser({
     email: 'admin@demo.com',
     name: 'Admin User',
@@ -69,6 +77,30 @@ async function main() {
     orgId: org.id,
   });
 
+=======
+  // Check if user exists
+  let user = await prisma.user.findUnique({
+    where: { email: 'admin@demo.com' },
+  });
+
+  if (!user) {
+    const passwordHash = await bcrypt.hash('admin123', 10);
+    user = await prisma.user.create({
+      data: {
+        email: 'admin@demo.com',
+        name: 'Admin User',
+        passwordHash,
+        isAdmin: true,
+        organizationId: org.id,
+      },
+    });
+    console.log('✅ Admin user created:', user.email);
+  } else {
+    console.log('ℹ️ Admin user already exists:', user.email);
+  }
+
+  // Check if connection exists
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   let connection = await prisma.whatsAppConnection.findFirst({
     where: { name: 'main-instance' },
   });
@@ -86,9 +118,13 @@ async function main() {
     console.log('ℹ️ WhatsApp connection already exists:', connection.id);
   }
 
+<<<<<<< HEAD
   console.log('\n🎉 Seed complete!');
   console.log('Admin:    admin@demo.com / admin123');
   console.log('Reviewer: reviewer@demo.com / reviewer123');
+=======
+  console.log('\n🎉 Seed complete! Login with: admin@demo.com / admin123');
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 }
 
 main()

@@ -53,7 +53,10 @@ const AGENT_TYPE_LABELS: Record<AgentType, string> = {
   relevance: 'Relevance filter',
   clean: 'Text cleaner',
   route: 'Destination router',
+<<<<<<< HEAD
   image_edit: 'Image watermark remover',
+=======
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 };
 
 function StructuredPolicyFields({
@@ -330,7 +333,11 @@ export default function AgentsPage() {
         <div>
           <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>AI Agents</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
+<<<<<<< HEAD
             Create agents here, then attach and order them on forwarding rules.
+=======
+            Create agents here, then attach them to rules in pipeline order
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -352,7 +359,11 @@ export default function AgentsPage() {
           <Bot size={40} style={{ marginBottom: '1rem', opacity: 0.5 }} />
           <h3>No agents yet</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+<<<<<<< HEAD
             Create relevance, image edit, clean, and route agents for your forwarding pipeline.
+=======
+            Create relevance, clean, and route agents for your forwarding pipeline.
+>>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
           </p>
           <button type="button" className="btn-primary" onClick={beginNew}>
             <Plus size={18} /> Create first agent
