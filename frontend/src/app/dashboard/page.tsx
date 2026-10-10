@@ -1,10 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-<<<<<<< HEAD
 import { useAuth } from '@/context/AuthContext';
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 import { fetchApi } from '@/lib/api';
 import { Activity, AlertTriangle, CheckCircle2, Clock, RefreshCw, Smartphone } from 'lucide-react';
 import Link from 'next/link';
@@ -34,10 +31,7 @@ interface ReviewSummary {
 }
 
 export default function DashboardHomePage() {
-<<<<<<< HEAD
   const { isAdmin } = useAuth();
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   const [window, setWindow] = useState('24h');
   const [throughput, setThroughput] = useState<Throughput | null>(null);
   const [health, setHealth] = useState<ConnectionHealth | null>(null);
@@ -47,7 +41,6 @@ export default function DashboardHomePage() {
   const loadMetrics = async () => {
     setIsLoading(true);
     try {
-<<<<<<< HEAD
       const reviewData = await fetchApi<ReviewSummary>('/metrics/review-summary');
       setReview(reviewData);
 
@@ -59,16 +52,6 @@ export default function DashboardHomePage() {
         setThroughput(throughputData);
         setHealth(healthData);
       }
-=======
-      const [throughputData, healthData, reviewData] = await Promise.all([
-        fetchApi<Throughput>(`/metrics/throughput?window=${encodeURIComponent(window)}`),
-        fetchApi<ConnectionHealth>('/metrics/connection-health'),
-        fetchApi<ReviewSummary>('/metrics/review-summary'),
-      ]);
-      setThroughput(throughputData);
-      setHealth(healthData);
-      setReview(reviewData);
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
     } catch (err) {
       console.error(err);
     } finally {
@@ -80,7 +63,6 @@ export default function DashboardHomePage() {
     loadMetrics();
     const interval = setInterval(loadMetrics, 30000);
     return () => clearInterval(interval);
-<<<<<<< HEAD
   }, [window, isAdmin]);
 
   if (!isAdmin) {
@@ -109,9 +91,6 @@ export default function DashboardHomePage() {
       </div>
     );
   }
-=======
-  }, [window]);
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
   return (
     <div className="animate-fade-in">
@@ -173,14 +152,7 @@ export default function DashboardHomePage() {
                 <MiniStat label="Pending" value={review?.pending ?? 0} />
                 <MiniStat label="Approved" value={review?.approved ?? 0} />
                 <MiniStat label="Rejected" value={review?.rejected ?? 0} />
-<<<<<<< HEAD
                 <MiniStat label="Oldest pending (min)" value={review?.oldestPendingAgeMinutes ?? '—'} />
-=======
-                <MiniStat
-                  label="Oldest pending (min)"
-                  value={review?.oldestPendingAgeMinutes ?? '—'}
-                />
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
               </div>
               <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 Pending items can be approved or rejected in the Review Queue.

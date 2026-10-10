@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 export type AgentType = 'relevance' | 'clean' | 'route' | 'image_edit';
-=======
-export type AgentType = 'relevance' | 'clean' | 'route';
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
 export type RelevanceStructuredConfig = {
   inclusionCriteria: string;
@@ -30,7 +26,6 @@ export type RouteStructuredConfig = {
   fallbackBehavior: string;
 };
 
-<<<<<<< HEAD
 export type ImageEditStructuredConfig = {
   removePrompt: string;
   onlyWhenWatermarkDetected: string;
@@ -39,16 +34,11 @@ export type ImageEditStructuredConfig = {
   minConfidence: string;
 };
 
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 export type StructuredConfigByType = {
   relevance: RelevanceStructuredConfig;
   clean: CleanStructuredConfig;
   route: RouteStructuredConfig;
-<<<<<<< HEAD
   image_edit: ImageEditStructuredConfig;
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 };
 
 export const emptyRelevanceStructuredConfig = (): RelevanceStructuredConfig => ({
@@ -77,7 +67,6 @@ export const emptyRouteStructuredConfig = (): RouteStructuredConfig => ({
   fallbackBehavior: '',
 });
 
-<<<<<<< HEAD
 export const emptyImageEditStructuredConfig = (): ImageEditStructuredConfig => ({
   removePrompt: '',
   onlyWhenWatermarkDetected: '',
@@ -90,11 +79,6 @@ export function emptyStructuredConfigForType(type: AgentType) {
   if (type === 'clean') return emptyCleanStructuredConfig();
   if (type === 'route') return emptyRouteStructuredConfig();
   if (type === 'image_edit') return emptyImageEditStructuredConfig();
-=======
-export function emptyStructuredConfigForType(type: AgentType) {
-  if (type === 'clean') return emptyCleanStructuredConfig();
-  if (type === 'route') return emptyRouteStructuredConfig();
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   return emptyRelevanceStructuredConfig();
 }
 
@@ -198,7 +182,6 @@ export const STRUCTURED_FIELDS: Record<AgentType, StructuredFieldDef[]> = {
       placeholder: 'e.g. skip, pick default group, or flag for review',
     },
   ],
-<<<<<<< HEAD
   image_edit: [
     {
       key: 'removePrompt',
@@ -231,16 +214,11 @@ export const STRUCTURED_FIELDS: Record<AgentType, StructuredFieldDef[]> = {
       placeholder: 'false — auto-forward cleaned image',
     },
   ],
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 };
 
 export const STRUCTURED_POLICY_INTRO: Record<AgentType, string> = {
   relevance: 'Define what should be forwarded, skipped, or sent to review for this rule.',
   clean: 'Define how message text should be transformed before forwarding.',
   route: 'Define how to choose destination chats (use chat descriptions on the Chats page too).',
-<<<<<<< HEAD
   image_edit: 'Configure pixel watermark removal for image messages (local sharp blur by default).',
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 };

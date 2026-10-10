@@ -3,19 +3,12 @@ import { NotFoundException } from '@nestjs/common';
 import { PipelineService } from './pipeline.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AiService } from '../common/ai/ai.service';
-<<<<<<< HEAD
 import { ImageEditService } from '../common/image/image-edit.service';
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
 describe('PipelineService', () => {
   let service: PipelineService;
   let prisma: {
-<<<<<<< HEAD
     message: { findUnique: jest.Mock; update: jest.Mock };
-=======
-    message: { findUnique: jest.Mock };
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
     rule: { findFirst: jest.Mock };
     agent: { findMany: jest.Mock };
     chat: { findMany: jest.Mock };
@@ -30,11 +23,8 @@ describe('PipelineService', () => {
     runRouteAgent: jest.Mock;
   };
 
-<<<<<<< HEAD
   let imageEditService: { runImageEditAgent: jest.Mock };
 
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   const messageId = 'msg-1';
   const ruleId = 'rule-1';
   const orgId = 'org-1';
@@ -52,11 +42,7 @@ describe('PipelineService', () => {
 
   beforeEach(async () => {
     prisma = {
-<<<<<<< HEAD
       message: { findUnique: jest.fn(), update: jest.fn().mockResolvedValue({}) },
-=======
-      message: { findUnique: jest.fn() },
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
       rule: { findFirst: jest.fn() },
       agent: { findMany: jest.fn() },
       chat: { findMany: jest.fn() },
@@ -66,20 +52,14 @@ describe('PipelineService', () => {
       whatsAppConnection: { findFirst: jest.fn() },
     };
     aiService = { runRelevanceAgent: jest.fn(), runCleanAgent: jest.fn(), runRouteAgent: jest.fn() };
-<<<<<<< HEAD
     imageEditService = { runImageEditAgent: jest.fn() };
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PipelineService,
         { provide: PrismaService, useValue: prisma },
         { provide: AiService, useValue: aiService },
-<<<<<<< HEAD
         { provide: ImageEditService, useValue: imageEditService },
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
       ],
     }).compile();
 
@@ -419,7 +399,6 @@ describe('PipelineService', () => {
     );
   });
 
-<<<<<<< HEAD
   it('runs clean before relevance when pipeline order is reversed', async () => {
     prisma.message.findUnique.mockResolvedValue({
       ...baseMessage,
@@ -460,8 +439,6 @@ describe('PipelineService', () => {
     );
   });
 
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   it('skips clean agent when message has no text body', async () => {
     prisma.message.findUnique.mockResolvedValue({
       ...baseMessage,

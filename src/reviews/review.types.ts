@@ -12,11 +12,8 @@ export interface ReviewForwardPayload {
 
   mediaUrl: string | null;
 
-<<<<<<< HEAD
   originalMediaUrl?: string | null;
 
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
   destinationChatIds: string[];
 
   pipelineMode: PipelineMode;
@@ -68,15 +65,12 @@ export function parseReviewForwardPayload(raw: string): ReviewForwardPayload {
   const type = typeof data.type === 'string' ? data.type : 'text';
   const mediaUrl: string | null =
     typeof data.mediaUrl === 'string' ? data.mediaUrl : data.mediaUrl === null ? null : null;
-<<<<<<< HEAD
   const originalMediaUrl: string | null =
     typeof data.originalMediaUrl === 'string'
       ? data.originalMediaUrl
       : data.originalMediaUrl === null
         ? null
         : null;
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
 
   const pipelineMode =
 
@@ -116,11 +110,8 @@ export function parseReviewForwardPayload(raw: string): ReviewForwardPayload {
 
     mediaUrl,
 
-<<<<<<< HEAD
     originalMediaUrl,
 
-=======
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
     destinationChatIds,
 
     pipelineMode,

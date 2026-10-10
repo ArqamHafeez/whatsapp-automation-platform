@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 node_modules
 
 dist
@@ -15,16 +14,3 @@ server credentials.txt
 package.json.backup
 tmp-auth-check.js
 test-auth-standalone.js
-=======
-node_modules
-
-dist
-
-.env
-.env.*
-!.env.example
-docker/.env.production
-
-deploy-bundle.tgz
-*.tgz
->>>>>>> bcea0d03553fdd833798e33a77097d8bfb44600a
