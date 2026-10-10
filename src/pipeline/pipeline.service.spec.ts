@@ -262,6 +262,54 @@ describe('PipelineService', () => {
     expect(prisma.reviewItem.create).toHaveBeenCalledTimes(1);
   });
 
+  it('queues review when a successful image edit requests review after editing', async () => {
+    prisma.message.findUnique.mockResolvedValue({
+      ...baseMessage,
+      body: 'We are hiring',
+      type: 'image',
+      mediaUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/',
+    });
+    prisma.rule.findFirst.mockResolvedValue({
+      id: ruleId,
+      name: 'Jobs rule',
+      description: null,
+      reviewMode: 'on_escalation',
+      reviewTimeoutMinutes: 60,
+      pipelineAgentIds: ['agent-relevance', 'agent-image-edit'],
+      destinationChatIds: ['dest-chat-1'],
+    });
+    prisma.agent.findMany.mockResolvedValue([
+      { id: 'agent-relevance', name: 'Relevance', type: 'relevance', isActive: true },
+      { id: 'agent-image-edit', name: 'Image edit', type: 'image_edit', isActive: true },
+    ]);
+    aiService.runRelevanceAgent.mockResolvedValue({
+      relevant: true,
+      reason: 'Hiring post',
+      confidence: 0.95,
+      needsReview: false,
+    });
+    imageEditService.runImageEditAgent.mockResolvedValue({
+      edited: true,
+      mediaUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/edited',
+      originalMediaUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/',
+      method: 'local',
+      regionsRemoved: ['watermark'],
+      confidence: 0.95,
+      needsReview: true,
+      reason: 'Image edited; review requested',
+    });
+
+    const result = await service.runForRule({ messageId, ruleId, orgId, connectionId });
+
+    expect(result.action).toBe('review');
+    expect(prisma.reviewItem.create).toHaveBeenCalledTimes(1);
+    expect(prisma.pipelineDecision.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ decisionType: 'review' }),
+      }),
+    );
+  });
+
   it('forwards when relevance agent marks message relevant', async () => {
     prisma.message.findUnique.mockResolvedValue(baseMessage);
     prisma.rule.findFirst.mockResolvedValue({

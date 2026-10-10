@@ -323,7 +323,9 @@ export class PipelineService {
           where: { id: opts.message.id },
           data: { mediaUrl: result.mediaUrl },
         });
-        if (!result.needsReview) {
+        if (result.needsReview) {
+          opts.onNeedsReview();
+        } else {
           opts.onReviewCleared();
         }
       } else if (result.needsReview) {

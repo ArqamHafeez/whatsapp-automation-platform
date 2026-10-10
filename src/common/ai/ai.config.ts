@@ -1,9 +1,13 @@
-export type AiProviderName = 'openai' | 'mock' | 'ollama';
+export type AiProviderName = 'openai' | 'openrouter' | 'mock' | 'ollama';
 
 export function getAiConfig(): {
   provider: AiProviderName;
   openaiApiKey: string;
   openaiModel: string;
+  openRouterApiKey: string;
+  openRouterBaseUrl: string;
+  openRouterModel: string;
+  openRouterVisionModel: string;
   ollamaBaseUrl: string;
   ollamaModel: string;
   requestTimeoutMs: number;
@@ -21,6 +25,8 @@ export function getAiConfig(): {
     provider = 'mock';
   } else if (providerRaw === 'ollama') {
     provider = 'ollama';
+  } else if (providerRaw === 'openrouter') {
+    provider = 'openrouter';
   }
 
   const ollamaBaseUrl =
@@ -32,6 +38,10 @@ export function getAiConfig(): {
     provider,
     openaiApiKey: process.env.OPENAI_API_KEY?.trim() || '',
     openaiModel: process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini',
+    openRouterApiKey: process.env.OPENROUTER_API_KEY?.trim() || '',
+    openRouterBaseUrl: (process.env.OPENROUTER_BASE_URL?.trim() || 'https://openrouter.ai/api/v1').replace(/\/$/, ''),
+    openRouterModel: process.env.OPENROUTER_MODEL?.trim() || '',
+    openRouterVisionModel: process.env.OPENROUTER_VISION_MODEL?.trim() || '',
     ollamaBaseUrl: ollamaBaseUrl.replace(/\/$/, ''),
     ollamaModel: process.env.OLLAMA_MODEL?.trim() || 'llama3.2',
     requestTimeoutMs: Number(process.env.AI_REQUEST_TIMEOUT_MS || 60_000),

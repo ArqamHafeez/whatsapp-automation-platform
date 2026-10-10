@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Agent } from '@prisma/client';
 import sharp from 'sharp';
 import { createAiProvider } from '../ai/ai-provider';
-import { getAiConfig } from '../ai/ai.config';
 import { buildAgentPrompts, buildDefaultImageEditUserPrompt, DEFAULT_IMAGE_EDIT_SYSTEM_PROMPT } from '../ai/prompt-builder';
 import { AgentRunContext } from '../ai/ai.types';
 import { getImageEditConfig } from './image-edit.config';
@@ -176,12 +175,10 @@ export class ImageEditService {
   ): Promise<WatermarkLocateResult> {
     const defaultUserPrompt = buildDefaultImageEditUserPrompt(context);
     const { systemPrompt, userPrompt } = buildAgentPrompts(agent, context, defaultUserPrompt);
-    const { openaiVisionModel } = getAiConfig();
-
     const completion = await this.provider.completeStructured({
       systemPrompt: systemPrompt || DEFAULT_IMAGE_EDIT_SYSTEM_PROMPT,
       userPrompt,
-      model: agent.model?.trim() || openaiVisionModel,
+      model: agent.model?.trim() || undefined,
       schemaHint: WATERMARK_LOCATE_SCHEMA_HINT,
       taskKind: 'relevance',
       imageDataUrl,

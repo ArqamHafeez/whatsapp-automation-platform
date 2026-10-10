@@ -136,7 +136,7 @@ export function isValidMediaDataUrl(mediaUrl: string): boolean {
     if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
       return true;
     }
-    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x53) {
+    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
       return true;
     }
     if (buf.toString('ascii', 0, 3) === 'GIF') {
@@ -202,7 +202,11 @@ export async function fetchWahaMediaDataUrl(
       return null;
     }
 
-    const contentType = res.headers.get('content-type')?.split(';')[0].trim() || mimeHint || 'application/octet-stream';
+    const responseContentType = res.headers.get('content-type')?.split(';')[0].trim();
+    const contentType =
+      (!responseContentType || responseContentType === 'application/octet-stream') && mimeHint
+        ? mimeHint
+        : responseContentType || mimeHint || 'application/octet-stream';
     const buffer = Buffer.from(await res.arrayBuffer());
     if (buffer.length < 12) {
       logger.warn(`fetchWahaMedia empty/small response (${buffer.length} bytes)`);
@@ -268,6 +272,31 @@ export async function fetchWahaMessageMedia(
     logger.warn(`downloadMedia failed: ${(err as Error).message}`);
     return null;
   }
+}
+
+/** Resolve an inbound image to base64 before pipeline agents need to inspect it. */
+export async function resolveInboundImageDataUrl(
+  sessionName: string,
+  chatId: string,
+  messageId: string,
+  mediaUrl: string | null,
+  mimeHint: string | null,
+): Promise<string | null> {
+  if (mediaUrl?.startsWith('data:image/') && isValidMediaDataUrl(mediaUrl)) {
+    return mediaUrl;
+  }
+
+  if (mediaUrl && isDirectHttpMediaUrl(mediaUrl)) {
+    const fetched = await fetchWahaMediaDataUrl(mediaUrl, mimeHint);
+    if (fetched && isValidMediaDataUrl(fetched)) {
+      return fetched;
+    }
+  }
+
+  const downloaded = await fetchWahaMessageMedia(sessionName, chatId, messageId, mimeHint);
+  return downloaded?.startsWith('data:image/') && isValidMediaDataUrl(downloaded)
+    ? downloaded
+    : null;
 }
 
 export async function resolveMediaUrlForForward(

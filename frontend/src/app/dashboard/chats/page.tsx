@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
 import { fetchApi } from '@/lib/api';
 import { formatChatDisplayLabel, chatMatchesSearch } from '@/lib/chat-display';
@@ -27,6 +27,51 @@ type CapDraft = {
   maxSendsPerDay: string;
 };
 
+function ChatDescriptionEditor({
+  initialValue,
+  isSaving,
+  onSave,
+  onCancel,
+}: {
+  initialValue: string;
+  isSaving: boolean;
+  onSave: (value: string) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState(initialValue);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  return (
+    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+      <textarea
+        ref={textareaRef}
+        className="input-field"
+        rows={2}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        placeholder="What belongs in this chat?"
+        style={{ flex: 1, fontSize: '0.8125rem' }}
+      />
+      <button
+        type="button"
+        className="btn-primary"
+        style={{ padding: '0.35rem' }}
+        disabled={isSaving}
+        onClick={() => onSave(draft)}
+      >
+        <Save size={14} />
+      </button>
+      <button type="button" className="btn-secondary" style={{ padding: '0.35rem' }} onClick={onCancel}>
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 function formatCap(value: number | null | undefined): string {
   if (value == null) return '—';
   return String(value);
@@ -50,11 +95,23 @@ export default function ChatsPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
-  const [descriptionDraft, setDescriptionDraft] = useState('');
   const [savingDescriptionId, setSavingDescriptionId] = useState<string | null>(null);
   const [editingCapsId, setEditingCapsId] = useState<string | null>(null);
   const [capsDraft, setCapsDraft] = useState<CapDraft>({ maxSendsPerHour: '', maxSendsPerDay: '' });
   const [savingCapsId, setSavingCapsId] = useState<string | null>(null);
+  const descriptionScrollRef = useRef<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const savedPosition = descriptionScrollRef.current;
+    if (!editingDescriptionId || !savedPosition) return;
+
+    const main = document.querySelector<HTMLElement>('.main-content');
+    if (main) {
+      main.scrollTop = savedPosition.top;
+      main.scrollLeft = savedPosition.left;
+    }
+    descriptionScrollRef.current = null;
+  }, [editingDescriptionId]);
 
   useEffect(() => {
     loadConnections();
@@ -115,17 +172,19 @@ export default function ChatsPage() {
   };
 
   const beginEditDescription = (chat: Chat) => {
+    const main = document.querySelector<HTMLElement>('.main-content');
+    descriptionScrollRef.current = main
+      ? { top: main.scrollTop, left: main.scrollLeft }
+      : null;
     setEditingDescriptionId(chat.id);
-    setDescriptionDraft(chat.description || '');
     setEditingCapsId(null);
   };
 
   const cancelEditDescription = () => {
     setEditingDescriptionId(null);
-    setDescriptionDraft('');
   };
 
-  const saveDescription = async (chatId: string) => {
+  const saveDescription = async (chatId: string, descriptionDraft: string) => {
     setSavingDescriptionId(chatId);
     try {
       await fetchApi(`/chats/${chatId}`, {
@@ -311,28 +370,13 @@ export default function ChatsPage() {
                       </td>
                       <td style={{ padding: '1rem' }}>
                         {editingDescriptionId === chat.id ? (
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                            <textarea
-                              className="input-field"
-                              rows={2}
-                              value={descriptionDraft}
-                              onChange={(e) => setDescriptionDraft(e.target.value)}
-                              placeholder="What belongs in this chat?"
-                              style={{ flex: 1, fontSize: '0.8125rem' }}
-                            />
-                            <button
-                              type="button"
-                              className="btn-primary"
-                              style={{ padding: '0.35rem' }}
-                              disabled={savingDescriptionId === chat.id}
-                              onClick={() => saveDescription(chat.id)}
-                            >
-                              <Save size={14} />
-                            </button>
-                            <button type="button" className="btn-secondary" style={{ padding: '0.35rem' }} onClick={cancelEditDescription}>
-                              <X size={14} />
-                            </button>
-                          </div>
+                          <ChatDescriptionEditor
+                            key={chat.id}
+                            initialValue={chat.description || ''}
+                            isSaving={savingDescriptionId === chat.id}
+                            onSave={(value) => saveDescription(chat.id, value)}
+                            onCancel={cancelEditDescription}
+                          />
                         ) : (
                           <button
                             type="button"

@@ -8,6 +8,7 @@ import {
   fetchWahaMediaDataUrl,
   mediaNeedsWahaFetch,
   parseWahaIncomingMessage,
+  resolveInboundImageDataUrl,
 } from '../common/waha/waha-message';
 import { resolveInboundChatJid } from '../common/whatsapp/inbound-chat-jid';
 
@@ -92,7 +93,27 @@ export class InboundMessageService {
       'unknown';
 
     let parsed = parseWahaIncomingMessage(msgData);
-    if (mediaNeedsWahaFetch(parsed)) {
+    if (parsed.type === 'image') {
+      const media = msgData.media as Record<string, unknown> | undefined;
+      const mediaUrl =
+        (typeof msgData.mediaUrl === 'string' && msgData.mediaUrl) ||
+        (typeof media?.url === 'string' && media.url) ||
+        parsed.mediaUrl;
+      const imageDataUrl = await resolveInboundImageDataUrl(
+        sessionName,
+        rawChatId,
+        waMessageId,
+        mediaUrl,
+        parsed.mimeType,
+      );
+      if (imageDataUrl) {
+        parsed = { ...parsed, mediaUrl: imageDataUrl };
+      } else {
+        this.logger.warn(
+          `Image media unavailable for vision analysis message=${waMessageId}; relevance will receive no image data`,
+        );
+      }
+    } else if (mediaNeedsWahaFetch(parsed)) {
       const media = msgData.media as Record<string, unknown> | undefined;
       const mediaUrl =
         (typeof msgData.mediaUrl === 'string' && msgData.mediaUrl) ||

@@ -121,6 +121,103 @@ export class OpenAiProvider implements AiProvider {
   }
 }
 
+export class OpenRouterProvider implements AiProvider {
+  private readonly logger = new Logger(OpenRouterProvider.name);
+
+  async completeStructured(request: StructuredCompletionRequest): Promise<StructuredCompletionResponse> {
+    const {
+      openRouterApiKey,
+      openRouterBaseUrl,
+      openRouterModel,
+      openRouterVisionModel,
+      requestTimeoutMs,
+      maxRetries,
+    } = getAiConfig();
+    if (!openRouterApiKey) {
+      throw new AiProviderError('OPENROUTER_API_KEY is not configured');
+    }
+
+    const isVisionRequest = request.imageDataUrl?.startsWith('data:image/') ?? false;
+    const model = request.model?.trim() || (isVisionRequest ? openRouterVisionModel : openRouterModel);
+    if (!model) {
+      throw new AiProviderError(
+        isVisionRequest ? 'OPENROUTER_VISION_MODEL is not configured' : 'OPENROUTER_MODEL is not configured',
+      );
+    }
+
+    const userContent: unknown = isVisionRequest
+      ? [
+          { type: 'text', text: request.userPrompt },
+          { type: 'image_url', image_url: { url: request.imageDataUrl } },
+        ]
+      : request.userPrompt;
+    const body = {
+      model,
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: buildStructuredSystemPrompt(request.systemPrompt, request.schemaHint),
+        },
+        { role: 'user', content: userContent },
+      ],
+    };
+
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      try {
+        const res = await fetch(`${openRouterBaseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${openRouterApiKey}`,
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(requestTimeoutMs),
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new AiProviderError(
+            `OpenRouter HTTP ${res.status}: ${errorText.slice(0, 300)}`,
+            res.status,
+          );
+        }
+
+        const payload = (await res.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+          model?: string;
+        };
+        const rawText = payload.choices?.[0]?.message?.content?.trim();
+        if (!rawText) {
+          throw new AiProviderError('OpenRouter returned empty completion');
+        }
+
+        const parsed = parseJsonCompletion(rawText, 'OpenRouter');
+        return {
+          rawText,
+          parsed,
+          model: payload.model || model,
+          provider: 'openrouter',
+        };
+      } catch (err) {
+        lastError = err as Error;
+        const retryable =
+          err instanceof AiProviderError &&
+          (err.statusCode === 429 || (err.statusCode !== undefined && err.statusCode >= 500));
+        if (!retryable || attempt >= maxRetries) {
+          break;
+        }
+        this.logger.warn(`OpenRouter retry ${attempt + 1}/${maxRetries}: ${(err as Error).message}`);
+        await sleep(500 * (attempt + 1));
+      }
+    }
+
+    throw lastError ?? new AiProviderError('OpenRouter request failed');
+  }
+}
+
 /** Local Ollama — uses POST /api/chat with JSON format (https://github.com/ollama/ollama/blob/main/docs/api.md). */
 export class OllamaProvider implements AiProvider {
   private readonly logger = new Logger(OllamaProvider.name);
@@ -311,6 +408,9 @@ export function createAiProvider(): AiProvider {
   }
   if (provider === 'ollama') {
     return new OllamaProvider();
+  }
+  if (provider === 'openrouter') {
+    return new OpenRouterProvider();
   }
   return new OpenAiProvider();
 }
