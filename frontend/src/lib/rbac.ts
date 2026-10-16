@@ -17,6 +17,7 @@ export const NAV_ITEMS: NavItem[] = [
   { name: 'Delivery Log', href: '/dashboard/delivery', roles: ['admin', 'reviewer'] },
   { name: 'Analytics', href: '/dashboard/analytics', roles: ['admin'] },
   { name: 'Team Users', href: '/dashboard/users', roles: ['admin'] },
+  { name: 'Opportunity Circle', href: '/dashboard/integrations/opportunity-circle', roles: ['admin'] },
 ];
 
 export function isAdmin(role?: UserRole | null): boolean {

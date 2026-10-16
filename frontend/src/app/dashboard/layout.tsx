@@ -5,7 +5,7 @@ import { RuleDraftProvider, useRuleDraft } from '@/context/RuleDraftContext';
 import { NAV_ITEMS } from '@/lib/rbac';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Smartphone, MessageSquare, Route, LogOut, User as UserIcon, Activity, Truck, ClipboardCheck, Bot, Users, BarChart3 } from 'lucide-react';
+import { Smartphone, MessageSquare, Route, LogOut, User as UserIcon, Activity, Truck, ClipboardCheck, Bot, Users, BarChart3, Link2 } from 'lucide-react';
 import React from 'react';
 
 const iconByHref: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -18,6 +18,7 @@ const iconByHref: Record<string, React.ComponentType<{ size?: number }>> = {
   '/dashboard/delivery': Truck,
   '/dashboard/analytics': BarChart3,
   '/dashboard/users': Users,
+  '/dashboard/integrations/opportunity-circle': Link2,
 };
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
@@ -37,17 +38,26 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       <aside
         style={{
           width: '260px',
+          flexShrink: 0,
           background: 'var(--bg-surface)',
           borderRight: '1px solid var(--border)',
           display: 'flex',
           flexDirection: 'column',
           padding: '1.5rem',
-          position: 'sticky',
-          top: 0,
-          height: '100vh',
+          height: '100%',
+          minHeight: 0,
+          overflow: 'hidden',
         }}
       >
-        <div style={{ marginBottom: '2.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div
+          style={{
+            marginBottom: '1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            flexShrink: 0,
+          }}
+        >
           <div
             style={{
               width: '32px',
@@ -81,7 +91,19 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           </span>
         </div>
 
-        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <nav
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            paddingRight: '0.25rem',
+            marginRight: '-0.25rem',
+          }}
+        >
           {navItems.map((item) => {
             const isActive =
               item.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(item.href);
@@ -123,7 +145,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div style={{ marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+        <div
+          style={{
+            flexShrink: 0,
+            paddingTop: '1rem',
+            marginTop: '0.75rem',
+            borderTop: '1px solid var(--border)',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
             <div
               style={{

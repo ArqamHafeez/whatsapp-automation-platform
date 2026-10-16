@@ -16,6 +16,7 @@
     "db:seed": "ts-node prisma/seed.ts",
     "test": "jest",
     "test:rbac": "node scripts/test-rbac.mjs",
+    "test:oc-integration": "node scripts/test-opportunity-circle-integration.mjs",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix"
   },
   "dependencies": {

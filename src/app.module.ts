@@ -12,6 +12,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { UsersModule } from './users/users.module';
+import { OpportunityCircleModule } from './opportunity-circle/opportunity-circle.module';
 import { WebhookController } from './webhook/webhook.controller';
 
 @Module({
@@ -29,6 +30,7 @@ import { WebhookController } from './webhook/webhook.controller';
     ReviewsModule,
     MonitoringModule,
     IngestionModule,
+    OpportunityCircleModule,
   ],
   controllers: [WebhookController],
 })

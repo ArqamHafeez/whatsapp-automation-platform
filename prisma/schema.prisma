@@ -8,15 +8,16 @@ datasource db {
 }
 
 model Organization {
-  id                  String               @id @default(uuid())
-  name                String
-  slug                String               @unique
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  users               User[]
-  whatsappConnections WhatsAppConnection[]
-  rules               Rule[]
-  agents              Agent[]
+  id                            String                         @id @default(uuid())
+  name                          String
+  slug                          String                         @unique
+  createdAt                     DateTime                       @default(now())
+  updatedAt                     DateTime                       @updatedAt
+  users                         User[]
+  whatsappConnections           WhatsAppConnection[]
+  rules                         Rule[]
+  agents                        Agent[]
+  opportunityCircleIntegration  OpportunityCircleIntegration?
 }
 
 enum UserRole {
@@ -65,6 +66,7 @@ model WhatsAppConnection {
   metadata    Json?
   chats       Chat[]
   rules       Rule[]
+  opportunityCircleIntegrations OpportunityCircleIntegration[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -233,4 +235,24 @@ model ReviewItem {
   reviewNotes     String?
   reviewerId      String?
   updatedAt       DateTime      @updatedAt
+}
+
+/// Opportunity Circle ingestor: expose successful forwards to OC sinks (destination-based).
+model OpportunityCircleIntegration {
+  id                String             @id @default(uuid())
+  orgId             String             @unique
+  org               Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  enabled           Boolean            @default(false)
+  connectionId      String
+  connection        WhatsAppConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  keyHash           String?
+  sinkChatIds       String[]           @default([])
+  primarySinkChatId String?
+  categoryByRuleId  Json               @default("{}")
+  defaultCategory   String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([connectionId])
+  @@map("opportunity_circle_integrations")
 }
